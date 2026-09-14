@@ -1,0 +1,2882 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AO3 Status Tracker</title>
+
+<!-- This makes the page feel more "app-like" when added to an iPhone home screen -->
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="AO3 Tracker" />
+
+<style>
+  :root {
+    --ao3-red: #900;
+    --ao3-red-dark: #700;
+    --ao3-blue: #4285f4;
+    --ao3-green: #34a853;
+    --ao3-gold: #c9962c;
+    --ao3-purple: #8e44ad;
+    --ao3-purple-dark: #6f3688;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    margin: 0;
+    padding: 20px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background-color: #f7f7f7;
+    color: #222;
+    min-height: 100vh;
+  }
+
+  h1 {
+    font-size: 22px;
+    text-align: center;
+    margin-bottom: 4px;
+  }
+
+  .subtitle {
+    text-align: center;
+    color: #666;
+    font-size: 13px;
+    margin-bottom: 24px;
+  }
+
+  .tabs {
+    display: flex;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid #ccc;
+  }
+
+  .tab-button {
+    flex: 1 1 33%;
+    padding: 12px 8px;
+    background-color: #fff;
+    border: none;
+    border-bottom: 1px solid #ccc;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    color: #666;
+  }
+
+  .tab-button.active {
+    background-color: var(--ao3-red);
+    color: #fff;
+  }
+
+  .panel {
+    background-color: #fff;
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  }
+
+  .panel.hidden {
+    display: none;
+  }
+
+  label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    margin-top: 14px;
+    margin-bottom: 4px;
+  }
+
+  input[type="text"],
+  input[type="url"],
+  input[type="number"],
+  select,
+  textarea {
+    width: 100%;
+    padding: 10px;
+    font-size: 15px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-family: inherit;
+    background-color: #fff;
+    color: #222;
+  }
+
+  textarea {
+    resize: vertical;
+  }
+
+  .checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    margin-top: 14px;
+    cursor: pointer;
+  }
+
+  .checkbox-label input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+  }
+
+  .checkbox-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 6px;
+    padding: 10px;
+    background: #f7f7f7;
+    border-radius: 6px;
+    border: 1px solid #e0e0e0;
+  }
+
+  .checkbox-label-inline {
+    margin-top: 0;
+    font-weight: 400;
+    font-size: 13px;
+  }
+
+  .sub-options {
+    margin-top: 8px;
+    padding-left: 26px;
+  }
+
+  button.primary {
+    margin-top: 18px;
+    width: 100%;
+    background-color: var(--ao3-red);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 14px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  button.primary:hover {
+    background-color: var(--ao3-red-dark);
+  }
+
+  button.secondary {
+    margin-top: 10px;
+    width: 100%;
+    background-color: #fff;
+    color: var(--ao3-red);
+    border: 1px solid var(--ao3-red);
+    border-radius: 6px;
+    padding: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  #log-status-msg,
+  #check-status-msg,
+  #wrapped-scrape-status,
+  #manual-add-status {
+    margin-top: 12px;
+    font-size: 14px;
+    text-align: center;
+    min-height: 18px;
+  }
+
+  .status-error { color: #900; }
+  .status-success { color: #34a853; }
+  .status-pending { color: #555; }
+
+  #check-result {
+    margin-top: 16px;
+    padding: 14px;
+    border-radius: 8px;
+    display: none;
+  }
+
+  #check-result.found {
+    display: block;
+    background-color: rgba(66, 133, 244, 0.08);
+    border-left: 4px solid #4285f4;
+  }
+
+  #check-result.found.dnf {
+    display: block;
+    background-color: rgba(153, 0, 0, 0.08);
+    border-left: 4px solid #900;
+  }
+
+  #check-result.found.finished {
+    background-color: rgba(52, 168, 83, 0.08);
+    border-left: 4px solid #34a853;
+  }
+
+  #check-result.found.tbr {
+    background-color: rgba(142, 68, 173, 0.08);
+    border-left: 4px solid var(--ao3-purple);
+  }
+
+  #check-result.not-found {
+    display: block;
+    background-color: #f0f0f0;
+    border-left: 4px solid #999;
+    color: #666;
+  }
+
+  #check-result p {
+    margin: 4px 0;
+    font-size: 14px;
+  }
+
+  #check-result .result-title {
+    font-weight: 700;
+    font-size: 15px;
+    margin-bottom: 8px;
+  }
+
+  .field-wrapper.hidden {
+    display: none;
+  }
+
+  .tab-description {
+    font-size: 13px;
+    color: #666;
+    margin-top: 4px;
+    margin-bottom: 0;
+  }
+
+  hr {
+    border: none;
+    border-top: 1px solid #eee;
+    margin: 20px 0;
+  }
+
+  .reading-card {
+    border-left: 4px solid var(--ao3-blue);
+    background: rgba(66, 133, 244, 0.06);
+    border-radius: 6px;
+    padding: 12px 14px;
+    margin-top: 12px;
+  }
+
+  .reading-card.favorite-card {
+    border-left: 4px solid var(--ao3-gold);
+    background: rgba(201, 150, 44, 0.07);
+  }
+
+  .reading-card-title {
+    font-weight: 700;
+    text-decoration: none;
+    color: #222;
+    display: block;
+    margin-bottom: 4px;
+    font-size: 15px;
+  }
+
+  .reading-card-chapter {
+    font-style: italic;
+    font-size: 13px;
+    color: #555;
+    margin-bottom: 4px;
+  }
+
+  .reading-card-note {
+    font-size: 13px;
+    color: #333;
+  }
+
+  .reading-card-reread-badge {
+    display: inline-block;
+    font-size: 11px;
+    background: var(--ao3-blue);
+    color: white;
+    border-radius: 10px;
+    padding: 1px 8px;
+    margin-left: 6px;
+    font-weight: 600;
+    vertical-align: middle;
+  }
+
+  .reading-card-backdate-badge {
+    display: inline-block;
+    font-size: 11px;
+    background: #999;
+    color: white;
+    border-radius: 10px;
+    padding: 1px 8px;
+    margin-left: 6px;
+    font-weight: 600;
+    vertical-align: middle;
+  }
+
+  .empty-message {
+    color: #777;
+    font-style: italic;
+    font-size: 14px;
+    text-align: center;
+    padding: 20px 0;
+  }
+
+  .section-heading {
+    font-size: 15px;
+    font-weight: 700;
+    margin-top: 22px;
+    margin-bottom: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .section-heading:first-child {
+    margin-top: 0;
+  }
+
+  .wrapped-hero {
+    text-align: center;
+    padding: 10px 0 20px;
+  }
+
+  .wrapped-hero-number {
+    font-size: 40px;
+    font-weight: 800;
+    color: var(--ao3-red);
+    line-height: 1.1;
+  }
+
+  .wrapped-hero-label {
+    font-size: 13px;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .wrapped-stat-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-top: 16px;
+  }
+
+  .wrapped-stat-box {
+    background: #f7f7f7;
+    border-radius: 8px;
+    padding: 12px;
+    text-align: center;
+  }
+
+  .wrapped-stat-box .num {
+    font-size: 22px;
+    font-weight: 700;
+    color: #222;
+  }
+
+  .wrapped-stat-box .label {
+    font-size: 11px;
+    color: #777;
+    margin-top: 2px;
+  }
+
+  .wrapped-section-title {
+    font-size: 15px;
+    font-weight: 700;
+    margin-top: 24px;
+    margin-bottom: 8px;
+    color: #222;
+  }
+
+  .wrapped-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .wrapped-list li {
+    padding: 8px 0;
+    border-bottom: 1px solid #eee;
+    font-size: 14px;
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .wrapped-list li:last-child {
+    border-bottom: none;
+  }
+
+  .wrapped-list .rank {
+    color: var(--ao3-red);
+    font-weight: 700;
+    margin-right: 8px;
+  }
+
+  .wrapped-list .count {
+    color: #999;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+
+  .wrapped-spotlight {
+    background: rgba(153, 0, 0, 0.05);
+    border-radius: 8px;
+    padding: 14px;
+    margin-top: 10px;
+  }
+
+  .wrapped-spotlight-title {
+    font-weight: 700;
+    font-size: 14px;
+    margin-bottom: 4px;
+  }
+
+  .wrapped-spotlight-meta {
+    font-size: 12px;
+    color: #777;
+  }
+
+  .wrapped-year-select {
+    margin-top: 14px;
+  }
+
+  .wrapped-backdated-note {
+    font-size: 12px;
+    color: #888;
+    font-style: italic;
+    margin-top: 6px;
+  }
+
+  /* ===================== TBR TAB ===================== */
+
+  .tbr-filter-group {
+    margin-bottom: 14px;
+  }
+
+  .tbr-filter-group summary {
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 8px 0;
+    color: #222;
+    list-style: none;
+  }
+
+  .tbr-filter-group summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .tbr-filter-group summary::before {
+    content: "▸ ";
+    color: var(--ao3-purple);
+  }
+
+  .tbr-filter-group[open] summary::before {
+    content: "▾ ";
+  }
+
+  .tbr-filter-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 8px 2px 4px;
+  }
+
+  .tbr-filter-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    padding: 5px 10px;
+    border-radius: 14px;
+    border: 1px solid #ccc;
+    background: #fff;
+    color: #444;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .tbr-filter-chip:hover {
+    border-color: var(--ao3-purple);
+  }
+
+  .tbr-filter-chip.selected {
+    background: var(--ao3-purple);
+    border-color: var(--ao3-purple);
+    color: #fff;
+  }
+
+  .tbr-filter-chip .chip-count {
+    font-size: 10px;
+    opacity: 0.75;
+  }
+
+  .tbr-active-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 10px 0;
+  }
+
+  .tbr-active-filter {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    padding: 4px 6px 4px 10px;
+    border-radius: 12px;
+    background: rgba(142, 68, 173, 0.12);
+    color: var(--ao3-purple-dark);
+    font-weight: 600;
+  }
+
+  .tbr-active-filter button {
+    background: none;
+    border: none;
+    color: var(--ao3-purple-dark);
+    font-size: 14px;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0;
+  }
+
+  .tbr-clear-filters {
+    font-size: 12px;
+    color: #999;
+    background: none;
+    border: none;
+    cursor: pointer;
+    text-decoration: underline;
+    padding: 0;
+  }
+
+  .tbr-sort-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 10px;
+  }
+
+  .tbr-sort-row select {
+    flex: 1;
+  }
+
+  .tbr-card {
+    border-left: 4px solid var(--ao3-purple);
+    background: rgba(142, 68, 173, 0.06);
+    border-radius: 6px;
+    padding: 12px 14px;
+    margin-top: 12px;
+  }
+
+  .tbr-card-title {
+    font-weight: 700;
+    text-decoration: none;
+    color: #222;
+    display: block;
+    margin-bottom: 4px;
+    font-size: 15px;
+  }
+
+  .tbr-card-meta {
+    font-size: 12px;
+    color: #666;
+    margin-bottom: 6px;
+  }
+
+  .tbr-card-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-bottom: 6px;
+  }
+
+  .tbr-card-tag {
+    font-size: 11px;
+    background: #f0f0f0;
+    color: #555;
+    border-radius: 10px;
+    padding: 2px 8px;
+  }
+
+  .tbr-card-note {
+    font-size: 13px;
+    color: #333;
+  }
+
+  .tbr-card-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+  }
+
+  .tbr-card-actions button {
+    flex: 1;
+    font-size: 12px;
+    padding: 8px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    background: #fff;
+    color: #444;
+    cursor: pointer;
+    font-weight: 600;
+  }
+
+  .tbr-card-actions button:hover {
+    border-color: var(--ao3-purple);
+    color: var(--ao3-purple);
+  }
+
+  .tbr-secondary-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 16px;
+  }
+
+  .tbr-secondary-actions button {
+    flex: 1;
+  }
+
+  button.tertiary {
+    margin-top: 0;
+    width: 100%;
+    background-color: #fff;
+    color: #666;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    padding: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  button.tertiary:hover {
+    border-color: var(--ao3-purple);
+    color: var(--ao3-purple);
+  }
+
+  /* ---- Modal overlay, shared by manual-TBR-entry and tag-wrangling popups ---- */
+
+  .modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.45);
+    z-index: 500;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    overflow-y: auto;
+    padding: 30px 16px;
+  }
+
+  .modal-overlay.hidden {
+    display: none;
+  }
+
+  .modal-box {
+    background: #fff;
+    border-radius: 10px;
+    padding: 20px;
+    width: 100%;
+    max-width: 480px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    position: relative;
+  }
+
+  .modal-close {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    background: none;
+    border: none;
+    font-size: 22px;
+    cursor: pointer;
+    color: #888;
+    line-height: 1;
+  }
+
+  .modal-close:hover {
+    color: #222;
+  }
+
+  .modal-title {
+    font-size: 17px;
+    font-weight: 700;
+    margin: 0 0 4px 0;
+    padding-right: 24px;
+  }
+
+  /* ---- Tag wrangling popup specifics ---- */
+
+  .wrangle-type-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 14px 0;
+  }
+
+  .wrangle-type-tab {
+    font-size: 12px;
+    padding: 6px 10px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    background: #fff;
+    color: #555;
+    cursor: pointer;
+  }
+
+  .wrangle-type-tab.active {
+    background: var(--ao3-purple);
+    border-color: var(--ao3-purple);
+    color: #fff;
+  }
+
+  .wrangle-raw-tag-list {
+    max-height: 240px;
+    overflow-y: auto;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    padding: 4px;
+  }
+
+  .wrangle-raw-tag-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px;
+    border-radius: 6px;
+    font-size: 13px;
+  }
+
+  .wrangle-raw-tag-row:hover {
+    background: #f7f7f7;
+  }
+
+  .wrangle-raw-tag-row input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+  }
+
+  .wrangle-raw-tag-name {
+    flex: 1;
+  }
+
+  .wrangle-raw-tag-canonical {
+    font-size: 11px;
+    color: var(--ao3-purple-dark);
+    background: rgba(142, 68, 173, 0.1);
+    padding: 1px 8px;
+    border-radius: 10px;
+  }
+
+  .wrangle-group-controls {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+  }
+
+  .wrangle-group-controls input {
+    flex: 1;
+  }
+
+  .wrangle-group-controls button {
+    width: auto;
+    margin-top: 0;
+    padding: 10px 16px;
+    white-space: nowrap;
+  }
+
+  .wrangle-existing-list {
+    margin-top: 18px;
+    border-top: 1px solid #eee;
+    padding-top: 12px;
+  }
+
+  .wrangle-existing-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    padding: 6px 0;
+    gap: 8px;
+  }
+
+  .wrangle-existing-row .canonical-name {
+    font-weight: 700;
+    color: var(--ao3-purple-dark);
+  }
+
+  .wrangle-existing-row .raw-names {
+    color: #777;
+    flex: 1;
+  }
+
+  .wrangle-existing-row button {
+    background: none;
+    border: none;
+    color: #999;
+    cursor: pointer;
+    font-size: 11px;
+    text-decoration: underline;
+    padding: 0;
+    width: auto;
+    margin-top: 0;
+    white-space: nowrap;
+  }
+</style>
+</head>
+<body>
+
+<h1>AO3 Status Tracker</h1>
+<p class="subtitle">Your reading, all in one place.</p>
+
+<div class="tabs">
+  <button class="tab-button active" id="tab-log-btn">Log a fic</button>
+  <button class="tab-button" id="tab-add-wrapped-btn">Add to Wrapped</button>
+  <button class="tab-button" id="tab-check-btn">Check a fic</button>
+  <button class="tab-button" id="tab-reading-btn">Currently Reading</button>
+  <button class="tab-button" id="tab-wrapped-btn">Wrapped Stats</button>
+  <button class="tab-button" id="tab-tbr-btn">To Be Read</button>
+</div>
+
+<div class="panel" id="log-panel">
+  <label for="log-url">AO3 fic URL</label>
+  <input type="url" id="log-url" placeholder="https://archiveofourown.org/works/12345678" />
+
+  <label for="log-status">Status</label>
+  <select id="log-status">
+    <option value="tbr">To Be Read</option>
+    <option value="reading">Reading</option>
+    <option value="finished">Finished</option>
+    <option value="dnf">Did Not Finish</option>
+  </select>
+
+  <div class="field-wrapper hidden" id="log-reason-wrapper">
+    <label for="log-reason">Reason for DNF</label>
+    <select id="log-reason">
+      <option value="ooc">Out of character</option>
+      <option value="pacing">Pacing / dragging</option>
+      <option value="plot">Plot / premise didn't work</option>
+      <option value="writing">Writing style</option>
+      <option value="squick">Squick / content</option>
+      <option value="other">Other</option>
+    </select>
+  </div>
+
+  <div class="field-wrapper hidden" id="log-chapter-wrapper">
+    <label for="log-chapter">Chapter / where you left off</label>
+    <input type="text" id="log-chapter" placeholder="e.g. Chapter 4 of 12" />
+  </div>
+
+  <div class="field-wrapper hidden" id="log-reread-wrapper">
+    <label class="checkbox-label">
+      <input type="checkbox" id="log-is-reread" />
+      This is a reread
+    </label>
+  </div>
+
+  <div class="field-wrapper hidden" id="log-backdate-wrapper">
+    <label class="checkbox-label">
+      <input type="checkbox" id="log-is-backdate" />
+      Backdate (read this before you started tracking)
+    </label>
+    <div class="field-wrapper hidden sub-options" id="log-backdate-options-wrapper">
+      <label for="log-backdate-period">When?</label>
+      <select id="log-backdate-period">
+        <option value="past">Past (exact time unknown)</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="field-wrapper hidden" id="log-favorite-wrapper">
+    <label class="checkbox-label">
+      <input type="checkbox" id="log-is-favorite" />
+      Favorite - I'll want to come back to this
+    </label>
+  </div>
+
+  <label for="log-note">Note (private)</label>
+  <textarea id="log-note" rows="4" placeholder="e.g. stopped at chapter 3, felt too slow"></textarea>
+
+  <button class="primary" id="log-save-btn">Save</button>
+  <div id="log-status-msg"></div>
+</div>
+
+<div class="panel hidden" id="add-wrapped-panel">
+  <p class="tab-description">
+    Paste a fic's AO3 link to log it as a completed read for your Wrapped
+    stats. This does <strong>not</strong> change its Reading/Finished/DNF
+    status - it only adds it to your yearly stats. Use this to recover a
+    fic that failed to auto-log, or to backfill something you read before
+    this system existed.
+  </p>
+
+  <label for="wrapped-url-input">AO3 Link</label>
+  <input type="url" id="wrapped-url-input" placeholder="https://archiveofourown.org/works/12345678" />
+
+  <label class="checkbox-label">
+    <input type="checkbox" id="wrapped-is-backdate-checkbox" />
+    Backdate (read this before you started tracking)
+  </label>
+  <div class="field-wrapper hidden sub-options" id="wrapped-backdate-options-wrapper">
+    <label for="wrapped-backdate-period">When?</label>
+    <select id="wrapped-backdate-period">
+      <option value="past">Past (exact time unknown)</option>
+    </select>
+  </div>
+
+  <button class="primary" id="wrapped-scrape-button">Add to Wrapped</button>
+  <div id="wrapped-scrape-status"></div>
+
+  <div id="wrapped-manual-fallback" class="hidden">
+    <hr />
+    <p class="tab-description"><strong>Couldn't scrape it? Add it manually below.</strong> Title and link are the only required fields.</p>
+
+    <label for="manual-url">AO3 Link *</label>
+    <input type="url" id="manual-url" placeholder="https://archiveofourown.org/works/12345678" />
+
+    <label for="manual-title">Title *</label>
+    <input type="text" id="manual-title" placeholder="Fic title" />
+
+    <label for="manual-word-count">Word Count</label>
+    <input type="number" id="manual-word-count" placeholder="e.g. 45000" />
+
+    <label for="manual-authors">Author(s)</label>
+    <input type="text" id="manual-authors" placeholder="Comma-separated" />
+
+    <label for="manual-fandoms">Fandom(s)</label>
+    <input type="text" id="manual-fandoms" placeholder="Comma-separated" />
+
+    <label for="manual-relationships">Relationship(s)</label>
+    <input type="text" id="manual-relationships" placeholder="Comma-separated" />
+
+    <label for="manual-characters">Character(s)</label>
+    <input type="text" id="manual-characters" placeholder="Comma-separated" />
+
+    <label for="manual-tags">Freeform Tags</label>
+    <input type="text" id="manual-tags" placeholder="Comma-separated" />
+
+    <label for="manual-ratings">Rating</label>
+    <select id="manual-ratings">
+      <option value="">— Select —</option>
+      <option value="General Audiences">General Audiences</option>
+      <option value="Teen And Up Audiences">Teen And Up Audiences</option>
+      <option value="Mature">Mature</option>
+      <option value="Explicit">Explicit</option>
+      <option value="Not Rated">Not Rated</option>
+    </select>
+
+    <label>Category</label>
+    <div class="checkbox-group" id="manual-category-group">
+      <label class="checkbox-label checkbox-label-inline"><input type="checkbox" class="manual-category-option" value="F/F" /> F/F</label>
+      <label class="checkbox-label checkbox-label-inline"><input type="checkbox" class="manual-category-option" value="F/M" /> F/M</label>
+      <label class="checkbox-label checkbox-label-inline"><input type="checkbox" class="manual-category-option" value="Gen" /> Gen</label>
+      <label class="checkbox-label checkbox-label-inline"><input type="checkbox" class="manual-category-option" value="M/M" /> M/M</label>
+      <label class="checkbox-label checkbox-label-inline"><input type="checkbox" class="manual-category-option" value="Multi" /> Multi</label>
+      <label class="checkbox-label checkbox-label-inline"><input type="checkbox" class="manual-category-option" value="Other" /> Other</label>
+      <label class="checkbox-label checkbox-label-inline"><input type="checkbox" id="manual-category-none" /> No Category</label>
+    </div>
+
+    <label>Archive Warnings</label>
+    <div class="checkbox-group" id="manual-warnings-group">
+      <label class="checkbox-label checkbox-label-inline"><input type="checkbox" class="manual-warning-option" value="Graphic Depictions Of Violence" /> Graphic Depictions of Violence</label>
+      <label class="checkbox-label checkbox-label-inline"><input type="checkbox" class="manual-warning-option" value="Major Character Death" /> Major Character Death</label>
+      <label class="checkbox-label checkbox-label-inline"><input type="checkbox" class="manual-warning-option" value="Rape/Non-Con" /> Rape/Non-Con</label>
+      <label class="checkbox-label checkbox-label-inline"><input type="checkbox" class="manual-warning-option" value="Underage" /> Underage Sex</label>
+      <label class="checkbox-label checkbox-label-inline"><input type="checkbox" id="manual-warnings-none-chosen" /> Creator Chose Not To Use Archive Warnings</label>
+      <label class="checkbox-label checkbox-label-inline"><input type="checkbox" id="manual-warnings-none-apply" /> No Archive Warnings Apply</label>
+    </div>
+
+    <button class="secondary" id="manual-add-button">Add Manually to Wrapped</button>
+    <div id="manual-add-status"></div>
+  </div>
+</div>
+
+<div class="panel hidden" id="check-panel">
+  <label for="check-url">AO3 fic URL</label>
+  <input type="url" id="check-url" placeholder="https://archiveofourown.org/works/12345678" />
+
+  <button class="primary" id="check-btn">Check status</button>
+  <div id="check-status-msg"></div>
+
+  <div id="check-result"></div>
+</div>
+
+<div class="panel hidden" id="reading-panel">
+  <div class="section-heading">Currently Reading</div>
+  <p class="tab-description">Fics you're mid-way through, most recently updated first.</p>
+  <div id="currently-reading-status"></div>
+  <div id="currently-reading-list"></div>
+
+  <hr />
+
+  <div class="section-heading">Favorites</div>
+  <p class="tab-description">Finished fics you've marked to come back to, A-Z.</p>
+  <div id="favorites-status"></div>
+  <div id="favorites-list"></div>
+</div>
+
+<div class="panel hidden" id="wrapped-panel">
+  <label for="wrapped-year-select" style="margin-top:0;">Year</label>
+  <select id="wrapped-year-select" class="wrapped-year-select"></select>
+
+  <div id="wrapped-stats-status"></div>
+  <div id="wrapped-stats-content"></div>
+</div>
+
+<div class="panel hidden" id="tbr-panel">
+  <p class="tab-description" style="margin-bottom: 14px;">
+    Recommendations you've saved but haven't started. Mark something
+    "To Be Read" from the extension or the Log tab to have it show up
+    here, tagged and filterable.
+  </p>
+
+  <div id="tbr-filters-container">
+    <!-- Filter groups (fandom, rating, warnings, relationships,
+         characters, freeform tags) are built by JS, since the
+         available options depend on what's actually in your TBR
+         list right now. -->
+  </div>
+
+  <div class="tbr-active-filters" id="tbr-active-filters"></div>
+  <button class="tbr-clear-filters hidden" id="tbr-clear-filters-btn">Clear all filters</button>
+
+  <div class="tbr-sort-row">
+    <select id="tbr-sort-select">
+      <option value="scraped_desc">Newest added first</option>
+      <option value="scraped_asc">Oldest added first</option>
+      <option value="title_asc">Title (A-Z)</option>
+      <option value="word_count_desc">Word count (longest first)</option>
+      <option value="word_count_asc">Word count (shortest first)</option>
+    </select>
+  </div>
+
+  <div id="tbr-results-status"></div>
+  <div id="tbr-results-list"></div>
+
+  <div class="tbr-secondary-actions">
+    <button class="tertiary" id="tbr-manual-add-open-btn">+ Add a fic manually</button>
+    <button class="tertiary" id="tbr-wrangle-open-btn">🏷️ Wrangle tags</button>
+  </div>
+</div>
+
+<!-- ===================== MANUAL TBR ENTRY POPUP =====================
+     Mirrors the "Add to Wrapped" manual fallback fields exactly, per
+     your request - same field set, just saving into tbr_metadata
+     (and tracked_fics as "tbr") instead of wrapped_log. Use this when
+     a fic won't scrape (locked, deleted, or AO3 hiccup) but you still
+     want it trackable and filterable in your TBR list. -->
+<div class="modal-overlay hidden" id="tbr-manual-modal">
+  <div class="modal-box">
+    <button class="modal-close" id="tbr-manual-modal-close">&times;</button>
+    <h3 class="modal-title">Add a TBR fic manually</h3>
+    <p class="tab-description">Use this if a fic won't scrape. URL and title are required.</p>
+
+    <label for="tbr-manual-url">AO3 Link *</label>
+    <input type="url" id="tbr-manual-url" placeholder="https://archiveofourown.org/works/12345678" />
+
+    <label for="tbr-manual-title">Title *</label>
+    <input type="text" id="tbr-manual-title" placeholder="Fic title" />
+
+    <label for="tbr-manual-word-count">Word Count</label>
+    <input type="number" id="tbr-manual-word-count" placeholder="e.g. 45000" />
+
+    <label for="tbr-manual-authors">Author(s)</label>
+    <input type="text" id="tbr-manual-authors" placeholder="Comma-separated" />
+
+    <label for="tbr-manual-fandoms">Fandom(s)</label>
+    <input type="text" id="tbr-manual-fandoms" placeholder="Comma-separated" />
+
+    <label for="tbr-manual-relationships">Relationship(s)</label>
+    <input type="text" id="tbr-manual-relationships" placeholder="Comma-separated" />
+
+    <label for="tbr-manual-characters">Character(s)</label>
+    <input type="text" id="tbr-manual-characters" placeholder="Comma-separated" />
+
+    <label for="tbr-manual-tags">Freeform Tags</label>
+    <input type="text" id="tbr-manual-tags" placeholder="Comma-separated" />
+
+    <label for="tbr-manual-ratings">Rating</label>
+    <select id="tbr-manual-ratings">
+      <option value="">— Select —</option>
+      <option value="General Audiences">General Audiences</option>
+      <option value="Teen And Up Audiences">Teen And Up Audiences</option>
+      <option value="Mature">Mature</option>
+      <option value="Explicit">Explicit</option>
+      <option value="Not Rated">Not Rated</option>
+    </select>
+
+    <label>Category</label>
+    <div class="checkbox-group" id="tbr-manual-category-group">
+      <label class="checkbox-label checkbox-label-inline"><input type="checkbox" class="tbr-manual-category-option" value="F/F" /> F/F</label>
+      <label class="checkbox-label checkbox-label-inline"><input type="checkbox" class="tbr-manual-category-option" value="F/M" /> F/M</label>
+      <label class="checkbox-label checkbox-label-inline"><input type="checkbox" class="tbr-manual-category-option" value="Gen" /> Gen</label>
+      <label class="checkbox-label checkbox-label-inline"><input type="checkbox" class="tbr-manual-category-option" value="M/M" /> M/M</label>
+      <label class="checkbox-label checkbox-label-inline"><input type="checkbox" class="tbr-manual-category-option" value="Multi" /> Multi</label>
+      <label class="checkbox-label checkbox-label-inline"><input type="checkbox" class="tbr-manual-category-option" value="Other" /> Other</label>
+      <label class="checkbox-label checkbox-label-inline"><input type="checkbox" id="tbr-manual-category-none" /> No Category</label>
+    </div>
+
+    <label>Archive Warnings</label>
+    <div class="checkbox-group" id="tbr-manual-warnings-group">
+      <label class="checkbox-label checkbox-label-inline"><input type="checkbox" class="tbr-manual-warning-option" value="Graphic Depictions Of Violence" /> Graphic Depictions of Violence</label>
+      <label class="checkbox-label checkbox-label-inline"><input type="checkbox" class="tbr-manual-warning-option" value="Major Character Death" /> Major Character Death</label>
+      <label class="checkbox-label checkbox-label-inline"><input type="checkbox" class="tbr-manual-warning-option" value="Rape/Non-Con" /> Rape/Non-Con</label>
+      <label class="checkbox-label checkbox-label-inline"><input type="checkbox" class="tbr-manual-warning-option" value="Underage" /> Underage Sex</label>
+      <label class="checkbox-label checkbox-label-inline"><input type="checkbox" id="tbr-manual-warnings-none-chosen" /> Creator Chose Not To Use Archive Warnings</label>
+      <label class="checkbox-label checkbox-label-inline"><input type="checkbox" id="tbr-manual-warnings-none-apply" /> No Archive Warnings Apply</label>
+    </div>
+
+    <label for="tbr-manual-note">Note (private)</label>
+    <textarea id="tbr-manual-note" rows="3" placeholder="Why you saved this one"></textarea>
+
+    <button class="primary" id="tbr-manual-add-button">Add to TBR</button>
+    <div id="tbr-manual-add-status"></div>
+  </div>
+</div>
+
+<!-- ===================== TAG WRANGLING POPUP =====================
+     Lets you group differently-worded tags that mean the same thing
+     (e.g. "Slow Burn" / "slow-burn") under one canonical name, WITHOUT
+     touching the raw scraped tag text. The mapping lives in the
+     tag_aliases table; filtering on the TBR tab looks tags up through
+     it. Pick a tag type, check off the raw tags that are duplicates
+     of each other, type the name you want them grouped under, save. -->
+<div class="modal-overlay hidden" id="wrangle-modal">
+  <div class="modal-box">
+    <button class="modal-close" id="wrangle-modal-close">&times;</button>
+    <h3 class="modal-title">Wrangle tags</h3>
+    <p class="tab-description">
+      Group tags that mean the same thing but are worded differently.
+      Pick a tag type below, check off the raw tags that are duplicates
+      of each other, then give them a shared name.
+    </p>
+
+    <div class="wrangle-type-tabs" id="wrangle-type-tabs">
+      <button class="wrangle-type-tab active" data-tag-type="fandom">Fandoms</button>
+      <button class="wrangle-type-tab" data-tag-type="relationship">Relationships</button>
+      <button class="wrangle-type-tab" data-tag-type="character">Characters</button>
+      <button class="wrangle-type-tab" data-tag-type="freeform">Freeform Tags</button>
+      <button class="wrangle-type-tab" data-tag-type="warning">Warnings</button>
+      <button class="wrangle-type-tab" data-tag-type="category">Category</button>
+      <button class="wrangle-type-tab" data-tag-type="rating">Rating</button>
+    </div>
+
+    <div class="wrangle-raw-tag-list" id="wrangle-raw-tag-list">
+      <!-- Populated by JS with every raw tag of the selected type
+           currently appearing in tbr_metadata, each with a checkbox
+           and, if already wrangled, a badge showing its canonical name. -->
+    </div>
+
+    <div class="wrangle-group-controls">
+      <input type="text" id="wrangle-canonical-input" placeholder="Group name, e.g. &quot;Slow Burn&quot;" />
+      <button class="primary" id="wrangle-save-btn">Group selected</button>
+    </div>
+    <div id="wrangle-status"></div>
+
+    <div class="wrangle-existing-list" id="wrangle-existing-list">
+      <!-- Populated by JS: existing canonical groups for the
+           selected tag type, each with an "Undo" to remove the
+           alias and revert those tags back to their raw names. -->
+    </div>
+  </div>
+</div>
+
+<script>
+  const SUPABASE_URL = "https://dhnniwvpwauurhianeqv.supabase.co";
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRobm5pd3Zwd2F1dXJoaWFuZXF2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzNDkxNzIsImV4cCI6MjEwMDkyNTE3Mn0.GIClijA9Gw-X1ivWnGO-qrvp1YH3PI62YuuXQsRIvls";
+  const SUPABASE_TABLE = "tracked_fics";
+  const WRAPPED_TABLE = "wrapped_log";
+  const TBR_METADATA_TABLE = "tbr_metadata";
+  const TAG_ALIASES_TABLE = "tag_aliases";
+  const SCRAPE_FIC_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/scrape-fic`;
+
+  const BIRTHDAY = new Date("2008-08-16T00:00:00Z");
+
+  const DNF_REASONS = {
+    ooc: "Out of character",
+    pacing: "Pacing / dragging",
+    plot: "Plot / premise didn't work",
+    writing: "Writing style",
+    squick: "Squick / content",
+    other: "Other"
+  };
+
+  function getFicIdFromUrl(url) {
+    const match = url.match(/\/works\/(\d+)/);
+    return match ? match[1] : null;
+  }
+
+  function parseCommaList(value) {
+    if (!value || !value.trim()) return [];
+    return value.split(",").map(s => s.trim()).filter(Boolean);
+  }
+
+  function escapeHtml(str) {
+    const div = document.createElement("div");
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  async function ficHasPriorWrappedEntry(ficId) {
+    try {
+      const response = await fetch(
+        `${SUPABASE_URL}/rest/v1/${WRAPPED_TABLE}?fic_id=eq.${ficId}&select=id&limit=1`,
+        { headers: { "apikey": SUPABASE_ANON_KEY, "Authorization": `Bearer ${SUPABASE_ANON_KEY}` } }
+      );
+      if (!response.ok) return false;
+      const rows = await response.json();
+      return rows.length > 0;
+    } catch (err) {
+      console.error("Couldn't check for prior Wrapped entries:", err);
+      return false;
+    }
+  }
+
+  const tabs = [
+    { btn: "tab-log-btn", panel: "log-panel", onShow: null },
+    { btn: "tab-add-wrapped-btn", panel: "add-wrapped-panel", onShow: null },
+    { btn: "tab-check-btn", panel: "check-panel", onShow: null },
+    { btn: "tab-reading-btn", panel: "reading-panel", onShow: () => { loadCurrentlyReading(); loadFavorites(); } },
+    { btn: "tab-wrapped-btn", panel: "wrapped-panel", onShow: () => loadWrappedStats() },
+    { btn: "tab-tbr-btn", panel: "tbr-panel", onShow: () => loadTbrTab() }
+  ];
+
+  function switchToTab(targetBtnId) {
+    tabs.forEach(({ btn, panel, onShow }) => {
+      const isTarget = btn === targetBtnId;
+      document.getElementById(btn).classList.toggle("active", isTarget);
+      document.getElementById(panel).classList.toggle("hidden", !isTarget);
+      if (isTarget && onShow) onShow();
+    });
+  }
+
+  tabs.forEach(({ btn }) => {
+    document.getElementById(btn).addEventListener("click", () => switchToTab(btn));
+  });
+
+  const logStatusSelect = document.getElementById("log-status");
+  const logReasonWrapper = document.getElementById("log-reason-wrapper");
+  const logChapterWrapper = document.getElementById("log-chapter-wrapper");
+  const logRereadWrapper = document.getElementById("log-reread-wrapper");
+  const logBackdateWrapper = document.getElementById("log-backdate-wrapper");
+  const logBackdateCheckbox = document.getElementById("log-is-backdate");
+  const logBackdateOptionsWrapper = document.getElementById("log-backdate-options-wrapper");
+  const logFavoriteWrapper = document.getElementById("log-favorite-wrapper");
+
+  function updateLogFieldVisibility() {
+    const status = logStatusSelect.value;
+    logReasonWrapper.classList.toggle("hidden", status !== "dnf");
+    logChapterWrapper.classList.toggle("hidden", status !== "reading");
+    logRereadWrapper.classList.toggle("hidden", status !== "reading");
+    logBackdateWrapper.classList.toggle("hidden", status !== "reading" && status !== "finished");
+    logFavoriteWrapper.classList.toggle("hidden", status !== "finished");
+  }
+  updateLogFieldVisibility();
+  logStatusSelect.addEventListener("change", updateLogFieldVisibility);
+
+  logBackdateCheckbox.addEventListener("change", () => {
+    logBackdateOptionsWrapper.classList.toggle("hidden", !logBackdateCheckbox.checked);
+  });
+
+  document.getElementById("log-save-btn").addEventListener("click", async () => {
+    const msg = document.getElementById("log-status-msg");
+    const urlInput = document.getElementById("log-url").value.trim();
+    const ficId = getFicIdFromUrl(urlInput);
+
+    if (!ficId) {
+      msg.textContent = "That doesn't look like a valid AO3 work URL.";
+      msg.className = "status-error";
+      return;
+    }
+
+    const status = logStatusSelect.value;
+    const reason = status === "dnf" ? document.getElementById("log-reason").value : null;
+    const chapterProgress = status === "reading" ? document.getElementById("log-chapter").value : null;
+    const note = document.getElementById("log-note").value;
+    const isRereadFlag = status === "reading" ? document.getElementById("log-is-reread").checked : false;
+    const isBackdateFlag = (status === "reading" || status === "finished") ? logBackdateCheckbox.checked : false;
+    const isFavorite = status === "finished" ? document.getElementById("log-is-favorite").checked : undefined;
+
+    msg.className = "status-pending";
+    msg.textContent = "Saving...";
+
+    try {
+      const result = await saveFicStatus({
+        ficId, title: null, status, reason, note, chapterProgress,
+        isRereadFlag, isBackdateFlag, isFavorite
+      });
+
+      if (result.tbrError) {
+        msg.className = "status-error";
+        msg.textContent = `Saved, but couldn't scrape tags for filtering - try again from the "To Be Read" tab.`;
+      } else if (result.wrappedError) {
+        msg.className = "status-error";
+        msg.textContent = `Saved, but couldn't log to Wrapped - use the "Add to Wrapped" tab to retry.`;
+      } else if (result.loggedCompletion) {
+        msg.className = "status-success";
+        msg.textContent = "Saved! Logged to Wrapped too.";
+      } else {
+        msg.className = "status-success";
+        msg.textContent = "Saved!";
+      }
+
+      document.getElementById("log-is-reread").checked = false;
+      logBackdateCheckbox.checked = false;
+      logBackdateOptionsWrapper.classList.add("hidden");
+    } catch (err) {
+      console.error(err);
+      msg.className = "status-error";
+      msg.textContent = "Something went wrong - check your connection.";
+    }
+  });
+
+  async function getFicTrackingState(ficId) {
+    const url = `${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}?fic_id=eq.${ficId}&select=status,read_count,in_progress_reread,in_progress_backdate,is_favorite`;
+    const response = await fetch(url, {
+      headers: { "apikey": SUPABASE_ANON_KEY, "Authorization": `Bearer ${SUPABASE_ANON_KEY}` }
+    });
+    if (!response.ok) return null;
+    const rows = await response.json();
+    return rows.length > 0 ? rows[0] : null;
+  }
+
+  // ---- TBR metadata helpers ----
+  // Mirror the ones in the extension's supabase-client.js. Kept here
+  // too since this page has its own self-contained copy of
+  // saveFicStatus() rather than importing that file.
+
+  async function getActiveTbrMetadata(ficId) {
+    const url = `${SUPABASE_URL}/rest/v1/${TBR_METADATA_TABLE}?fic_id=eq.${ficId}&is_active=eq.true&select=*`;
+    const response = await fetch(url, {
+      headers: { "apikey": SUPABASE_ANON_KEY, "Authorization": `Bearer ${SUPABASE_ANON_KEY}` }
+    });
+    if (!response.ok) return null;
+    const rows = await response.json();
+    return rows.length > 0 ? rows[0] : null;
+  }
+
+  // Same as above but ignores is_active - used right at Finish-time,
+  // since by then the TBR-exit handling in saveFicStatus() may have
+  // JUST flipped this row to inactive, but its scraped data is still
+  // exactly what we want to reuse instead of scraping again.
+  async function getMostRecentTbrMetadata(ficId) {
+    const url = `${SUPABASE_URL}/rest/v1/${TBR_METADATA_TABLE}?fic_id=eq.${ficId}&select=*&order=scraped_at.desc&limit=1`;
+    const response = await fetch(url, {
+      headers: { "apikey": SUPABASE_ANON_KEY, "Authorization": `Bearer ${SUPABASE_ANON_KEY}` }
+    });
+    if (!response.ok) return null;
+    const rows = await response.json();
+    return rows.length > 0 ? rows[0] : null;
+  }
+
+  async function scrapeIntoTbrMetadata(ficId) {
+    const existing = await getActiveTbrMetadata(ficId);
+    if (existing) return { ok: true, error: null };
+
+    try {
+      const scrapeResponse = await fetch(SCRAPE_FIC_FUNCTION_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${SUPABASE_ANON_KEY}` },
+        body: JSON.stringify({ url: `https://archiveofourown.org/works/${ficId}` })
+      });
+      const scrapeResult = await scrapeResponse.json();
+
+      if (!scrapeResponse.ok) {
+        return { ok: false, error: scrapeResult.error || "Scrape failed" };
+      }
+
+      const upsertUrl = `${SUPABASE_URL}/rest/v1/${TBR_METADATA_TABLE}?on_conflict=fic_id`;
+      const response = await fetch(upsertUrl, {
+        method: "POST",
+        headers: {
+          "apikey": SUPABASE_ANON_KEY,
+          "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+          "Content-Type": "application/json",
+          "Prefer": "resolution=merge-duplicates,return=representation"
+        },
+        body: JSON.stringify([{
+          fic_id: ficId,
+          title: scrapeResult.title,
+          word_count: scrapeResult.word_count,
+          authors: scrapeResult.authors,
+          ratings: scrapeResult.ratings,
+          archive_warnings: scrapeResult.archive_warnings,
+          category: scrapeResult.category,
+          fandoms: scrapeResult.fandoms,
+          relationships: scrapeResult.relationships,
+          characters: scrapeResult.characters,
+          free_form_tags: scrapeResult.free_form_tags,
+          is_active: true,
+          scraped_at: new Date().toISOString()
+        }])
+      });
+
+      if (!response.ok) {
+        return { ok: false, error: "Scraped, but couldn't save to your TBR list." };
+      }
+      return { ok: true, error: null };
+    } catch (err) {
+      console.error(err);
+      return { ok: false, error: "Something went wrong scraping this fic." };
+    }
+  }
+
+  async function deactivateTbrMetadata(ficId) {
+    try {
+      const url = `${SUPABASE_URL}/rest/v1/${TBR_METADATA_TABLE}?fic_id=eq.${ficId}`;
+      await fetch(url, {
+        method: "PATCH",
+        headers: {
+          "apikey": SUPABASE_ANON_KEY,
+          "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+          "Content-Type": "application/json",
+          "Prefer": "return=minimal"
+        },
+        body: JSON.stringify({ is_active: false })
+      });
+    } catch (err) {
+      console.error("Failed to deactivate tbr_metadata:", err);
+    }
+  }
+
+  async function saveFicStatus({
+    ficId, title, status, reason, note, chapterProgress,
+    isRereadFlag, isBackdateFlag, isFavorite
+  }) {
+    const previousState = await getFicTrackingState(ficId);
+    const previousStatus = previousState ? previousState.status : null;
+    const previousReadCount = previousState ? (previousState.read_count || 0) : 0;
+    const wasInProgressReread = previousState ? (previousState.in_progress_reread || false) : false;
+    const wasInProgressBackdate = previousState ? (previousState.in_progress_backdate || false) : false;
+
+    const isGenuineCompletion = status === "finished" && previousStatus !== "finished";
+    const completionIsReread = isGenuineCompletion && wasInProgressReread;
+    const completionIsBackdated = isGenuineCompletion && (wasInProgressBackdate || (status === "finished" && isBackdateFlag));
+
+    const newReadCount = isGenuineCompletion ? previousReadCount + 1 : previousReadCount;
+
+    let newInProgressReread = wasInProgressReread;
+    if (status === "reading" && isRereadFlag) {
+      newInProgressReread = true;
+    } else if (isGenuineCompletion) {
+      newInProgressReread = false;
+    }
+
+    let newInProgressBackdate = wasInProgressBackdate;
+    if (status === "reading" && isBackdateFlag) {
+      newInProgressBackdate = true;
+    } else if (isGenuineCompletion) {
+      newInProgressBackdate = false;
+    }
+
+    const previousFavorite = previousState ? (previousState.is_favorite || false) : false;
+    const newIsFavorite = status === "finished" && typeof isFavorite === "boolean"
+      ? isFavorite
+      : previousFavorite;
+
+    const upsertUrl = `${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}?on_conflict=fic_id`;
+    const response = await fetch(upsertUrl, {
+      method: "POST",
+      headers: {
+        "apikey": SUPABASE_ANON_KEY,
+        "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+        "Content-Type": "application/json",
+        "Prefer": "resolution=merge-duplicates,return=representation"
+      },
+      body: JSON.stringify([{
+        fic_id: ficId,
+        title: title,
+        status: status,
+        reason: reason || null,
+        note: note || null,
+        chapter_progress: chapterProgress || null,
+        read_count: newReadCount,
+        in_progress_reread: newInProgressReread,
+        in_progress_backdate: newInProgressBackdate,
+        is_favorite: newIsFavorite,
+        updated_at: new Date().toISOString()
+      }])
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      console.error("Save failed:", errText);
+      throw new Error("Failed to save status");
+    }
+
+    const savedRow = await response.json();
+
+    // ---- TBR entering/leaving handling ----
+    // Freshly marked TBR: scrape right away so filtering works
+    // immediately. Moved OFF TBR to anything else: deactivate the
+    // old metadata row (kept, not deleted, so a future re-add or a
+    // Finish right after can reuse it).
+    let tbrError = null;
+    if (status === "tbr" && previousStatus !== "tbr") {
+      const scrapeOutcome = await scrapeIntoTbrMetadata(ficId);
+      if (!scrapeOutcome.ok) tbrError = scrapeOutcome.error;
+    } else if (status !== "tbr" && previousStatus === "tbr") {
+      await deactivateTbrMetadata(ficId);
+    }
+
+    if (!isGenuineCompletion) {
+      return { savedRow, loggedCompletion: false, wrappedError: null, tbrError };
+    }
+
+    try {
+      // Reuse existing TBR-scraped data on Finish instead of
+      // re-scraping, per your request. Checked by fic_id regardless
+      // of is_active, since the block above may have just flipped it
+      // off this same call.
+      const reusable = await getMostRecentTbrMetadata(ficId);
+      let scrapeResult;
+
+      if (reusable) {
+        scrapeResult = reusable;
+      } else {
+        const scrapeResponse = await fetch(SCRAPE_FIC_FUNCTION_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${SUPABASE_ANON_KEY}` },
+          body: JSON.stringify({ url: `https://archiveofourown.org/works/${ficId}` })
+        });
+        scrapeResult = await scrapeResponse.json();
+
+        if (!scrapeResponse.ok) {
+          return { savedRow, loggedCompletion: false, wrappedError: scrapeResult.error || "Scrape failed", tbrError };
+        }
+      }
+
+      const wrappedResponse = await fetch(`${SUPABASE_URL}/rest/v1/${WRAPPED_TABLE}`, {
+        method: "POST",
+        headers: {
+          "apikey": SUPABASE_ANON_KEY,
+          "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+          "Content-Type": "application/json",
+          "Prefer": "return=representation"
+        },
+        body: JSON.stringify([{
+          fic_id: ficId,
+          title: scrapeResult.title,
+          word_count: scrapeResult.word_count,
+          authors: scrapeResult.authors,
+          ratings: scrapeResult.ratings,
+          archive_warnings: scrapeResult.archive_warnings,
+          category: scrapeResult.category,
+          fandoms: scrapeResult.fandoms,
+          relationships: scrapeResult.relationships,
+          characters: scrapeResult.characters,
+          free_form_tags: scrapeResult.free_form_tags,
+          is_reread: completionIsReread,
+          is_backdated: completionIsBackdated,
+          completed_at: completionIsBackdated ? null : new Date().toISOString()
+        }])
+      });
+
+      if (!wrappedResponse.ok) {
+        return { savedRow, loggedCompletion: false, wrappedError: "Couldn't log to Wrapped.", tbrError };
+      }
+
+      return { savedRow, loggedCompletion: true, wrappedError: null, tbrError };
+    } catch (err) {
+      console.error(err);
+      return { savedRow, loggedCompletion: false, wrappedError: "Couldn't log to Wrapped.", tbrError };
+    }
+  }
+
+  document.getElementById("check-btn").addEventListener("click", async () => {
+    const msg = document.getElementById("check-status-msg");
+    const resultBox = document.getElementById("check-result");
+    const urlInput = document.getElementById("check-url").value.trim();
+    const ficId = getFicIdFromUrl(urlInput);
+
+    resultBox.className = "";
+    resultBox.innerHTML = "";
+
+    if (!ficId) {
+      msg.textContent = "That doesn't look like a valid AO3 work URL.";
+      msg.style.color = "#900";
+      return;
+    }
+
+    msg.style.color = "#555";
+    msg.textContent = "Checking...";
+
+    try {
+      const response = await fetch(
+        `${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}?fic_id=eq.${ficId}&select=*`,
+        { headers: { "apikey": SUPABASE_ANON_KEY, "Authorization": `Bearer ${SUPABASE_ANON_KEY}` } }
+      );
+
+      if (!response.ok) {
+        msg.style.color = "#900";
+        msg.textContent = "Something went wrong - try again.";
+        return;
+      }
+
+      const rows = await response.json();
+      msg.textContent = "";
+
+      if (rows.length === 0) {
+        resultBox.className = "not-found";
+        resultBox.innerHTML = `<p>You haven't logged a status for this fic yet.</p>`;
+        return;
+      }
+
+      const data = rows[0];
+      resultBox.className = `found ${data.status}`;
+
+      let html = `<div class="result-title">Status: ${data.status === "tbr" ? "To Be Read" : data.status}${data.is_favorite ? " (Favorite)" : ""}</div>`;
+      if (data.status === "dnf" && data.reason) {
+        html += `<p><strong>Reason:</strong> ${DNF_REASONS[data.reason] || data.reason}</p>`;
+      }
+      if (data.status === "reading" && data.chapter_progress) {
+        html += `<p><strong>Left off:</strong> ${data.chapter_progress}</p>`;
+      }
+      if (data.read_count > 0) {
+        html += `<p><strong>Times read:</strong> ${data.read_count}</p>`;
+      }
+      if (data.note) {
+        html += `<p><strong>Note:</strong> ${data.note}</p>`;
+      }
+
+      // TBR fics have their tags in tbr_metadata, not tracked_fics,
+      // so fetch that separately to show fandoms alongside the status.
+      if (data.status === "tbr") {
+        const tbrMetaResponse = await fetch(
+          `${SUPABASE_URL}/rest/v1/${TBR_METADATA_TABLE}?fic_id=eq.${ficId}&is_active=eq.true&select=fandoms,word_count`,
+          { headers: { "apikey": SUPABASE_ANON_KEY, "Authorization": `Bearer ${SUPABASE_ANON_KEY}` } }
+        );
+        if (tbrMetaResponse.ok) {
+          const tbrMetaRows = await tbrMetaResponse.json();
+          if (tbrMetaRows.length > 0) {
+            const meta = tbrMetaRows[0];
+            if (meta.fandoms && meta.fandoms.length > 0) {
+              html += `<p><strong>Fandom(s):</strong> ${meta.fandoms.join(", ")}</p>`;
+            }
+            if (meta.word_count) {
+              html += `<p><strong>Word count:</strong> ${meta.word_count.toLocaleString()}</p>`;
+            }
+          }
+        }
+      }
+
+      resultBox.innerHTML = html;
+    } catch (err) {
+      console.error(err);
+      msg.style.color = "#900";
+      msg.textContent = "Something went wrong - check your connection.";
+    }
+  });
+
+  async function loadCurrentlyReading() {
+    const statusEl = document.getElementById("currently-reading-status");
+    const listEl = document.getElementById("currently-reading-list");
+
+    statusEl.textContent = "Loading...";
+    statusEl.className = "status-pending";
+    listEl.innerHTML = "";
+
+    try {
+      const response = await fetch(
+        `${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}?status=eq.reading&select=fic_id,title,chapter_progress,note,read_count,in_progress_reread,in_progress_backdate,updated_at&order=updated_at.desc`,
+        { headers: { "apikey": SUPABASE_ANON_KEY, "Authorization": `Bearer ${SUPABASE_ANON_KEY}` } }
+      );
+
+      if (!response.ok) {
+        statusEl.textContent = "Couldn't load your list - try again.";
+        statusEl.className = "status-error";
+        return;
+      }
+
+      const data = await response.json();
+      statusEl.textContent = "";
+
+      if (!data || data.length === 0) {
+        listEl.innerHTML = '<p class="empty-message">Nothing in progress right now - go start something!</p>';
+        return;
+      }
+
+      listEl.innerHTML = data.map(renderReadingCard).join("");
+    } catch (err) {
+      console.error(err);
+      statusEl.textContent = "Something went wrong - check your connection.";
+      statusEl.className = "status-error";
+    }
+  }
+
+  function renderReadingCard(fic) {
+    const ficUrl = `https://archiveofourown.org/works/${fic.fic_id}`;
+    const safeTitle = escapeHtml(fic.title || "(untitled - open on desktop once to fill this in)");
+    const chapterText = fic.chapter_progress ? escapeHtml(fic.chapter_progress) : "Chapter progress not noted";
+    const noteText = fic.note ? escapeHtml(fic.note) : "";
+
+    const rereadBadge = fic.in_progress_reread
+      ? '<span class="reading-card-reread-badge">Reread</span>'
+      : (fic.read_count > 0 ? `<span class="reading-card-reread-badge">Read ${fic.read_count}x before</span>` : "");
+
+    const backdateBadge = fic.in_progress_backdate
+      ? '<span class="reading-card-backdate-badge">Backdated</span>'
+      : "";
+
+    return `
+      <div class="reading-card">
+        <a class="reading-card-title" href="${ficUrl}" target="_blank" rel="noopener">${safeTitle}${rereadBadge}${backdateBadge}</a>
+        <div class="reading-card-chapter">${chapterText}</div>
+        ${noteText ? `<div class="reading-card-note">${noteText}</div>` : ""}
+      </div>
+    `;
+  }
+
+  async function loadFavorites() {
+    const statusEl = document.getElementById("favorites-status");
+    const listEl = document.getElementById("favorites-list");
+
+    statusEl.textContent = "Loading...";
+    statusEl.className = "status-pending";
+    listEl.innerHTML = "";
+
+    try {
+      const response = await fetch(
+        `${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}?is_favorite=eq.true&select=fic_id,title,note,read_count&order=title.asc`,
+        { headers: { "apikey": SUPABASE_ANON_KEY, "Authorization": `Bearer ${SUPABASE_ANON_KEY}` } }
+      );
+
+      if (!response.ok) {
+        statusEl.textContent = "Couldn't load your favorites - try again.";
+        statusEl.className = "status-error";
+        return;
+      }
+
+      const data = await response.json();
+      statusEl.textContent = "";
+
+      if (!data || data.length === 0) {
+        listEl.innerHTML = '<p class="empty-message">No favorites marked yet.</p>';
+        return;
+      }
+
+      listEl.innerHTML = data.map(renderFavoriteCard).join("");
+    } catch (err) {
+      console.error(err);
+      statusEl.textContent = "Something went wrong - check your connection.";
+      statusEl.className = "status-error";
+    }
+  }
+
+  function renderFavoriteCard(fic) {
+    const ficUrl = `https://archiveofourown.org/works/${fic.fic_id}`;
+    const safeTitle = escapeHtml(fic.title || "(untitled)");
+    const noteText = fic.note ? escapeHtml(fic.note) : "";
+    const readCountText = fic.read_count > 1 ? `<div class="reading-card-chapter">Read ${fic.read_count}x</div>` : "";
+
+    return `
+      <div class="reading-card favorite-card">
+        <a class="reading-card-title" href="${ficUrl}" target="_blank" rel="noopener">${safeTitle}</a>
+        ${readCountText}
+        ${noteText ? `<div class="reading-card-note">${noteText}</div>` : ""}
+      </div>
+    `;
+  }
+
+  // ===================== TBR TAB =====================
+  // Everything below powers the "To Be Read" tab: pulling active
+  // tbr_metadata rows, building filter chips from whatever tags
+  // actually appear in your current TBR list, applying tag-alias
+  // grouping (tag wrangling) on top, and rendering result cards with
+  // quick actions to move a fic to Reading/Finished/DNF.
+
+  const TBR_FILTER_FIELDS = [
+    { key: "fandoms", tagType: "fandom", label: "Fandom" },
+    { key: "ratings", tagType: "rating", label: "Rating" },
+    { key: "archive_warnings", tagType: "warning", label: "Warnings" },
+    { key: "relationships", tagType: "relationship", label: "Relationships" },
+    { key: "characters", tagType: "character", label: "Characters" },
+    { key: "free_form_tags", tagType: "freeform", label: "Freeform Tags" }
+  ];
+
+  // Selected filters, keyed by tagType -> Set of selected CANONICAL
+  // tag names (post-wrangling). Persists while you're on the tab so
+  // switching sort order doesn't reset your filters.
+  let tbrSelectedFilters = {};
+  TBR_FILTER_FIELDS.forEach(f => { tbrSelectedFilters[f.tagType] = new Set(); });
+
+  let tbrAllRows = [];       // raw active tbr_metadata rows, unfiltered
+  let tbrAliasMap = {};      // "type::rawTag" -> canonicalTag
+  let tbrLoaded = false;
+
+  async function getTagAliasMap() {
+    const response = await fetch(
+      `${SUPABASE_URL}/rest/v1/${TAG_ALIASES_TABLE}?select=*`,
+      { headers: { "apikey": SUPABASE_ANON_KEY, "Authorization": `Bearer ${SUPABASE_ANON_KEY}` } }
+    );
+    if (!response.ok) return {};
+    const rows = await response.json();
+    const map = {};
+    rows.forEach(row => { map[`${row.tag_type}::${row.raw_tag}`] = row.canonical_tag; });
+    return map;
+  }
+
+  function resolveCanonical(rawTag, tagType) {
+    return tbrAliasMap[`${tagType}::${rawTag}`] || rawTag;
+  }
+
+  /**
+   * Loads (or reloads) everything the TBR tab needs: active
+   * tbr_metadata rows + the current tag alias map. Called once when
+   * the tab is first opened, and again after any action that changes
+   * the underlying data (adding manually, wrangling tags, moving a
+   * fic off TBR).
+   */
+  async function loadTbrTab() {
+    const statusEl = document.getElementById("tbr-results-status");
+    statusEl.textContent = "Loading...";
+    statusEl.className = "status-pending";
+
+    try {
+      const [metaResponse, aliasMap] = await Promise.all([
+        fetch(
+          `${SUPABASE_URL}/rest/v1/${TBR_METADATA_TABLE}?is_active=eq.true&select=*`,
+          { headers: { "apikey": SUPABASE_ANON_KEY, "Authorization": `Bearer ${SUPABASE_ANON_KEY}` } }
+        ),
+        getTagAliasMap()
+      ]);
+
+      if (!metaResponse.ok) {
+        statusEl.textContent = "Couldn't load your TBR list - try again.";
+        statusEl.className = "status-error";
+        return;
+      }
+
+      tbrAllRows = await metaResponse.json();
+      tbrAliasMap = aliasMap;
+      tbrLoaded = true;
+      statusEl.textContent = "";
+
+      renderTbrFilterGroups();
+      renderTbrResults();
+    } catch (err) {
+      console.error(err);
+      statusEl.textContent = "Something went wrong - check your connection.";
+      statusEl.className = "status-error";
+    }
+  }
+
+  /**
+   * Builds the collapsible filter-chip groups from whatever tags
+   * actually appear across the current TBR list. Tags are grouped by
+   * their CANONICAL name (after wrangling) so "Slow Burn" and
+   * "slow-burn" show up as one chip with a combined count.
+   */
+  function renderTbrFilterGroups() {
+    const container = document.getElementById("tbr-filters-container");
+    container.innerHTML = "";
+
+    TBR_FILTER_FIELDS.forEach(field => {
+      // canonicalTag -> count of fics
+      const counts = new Map();
+      tbrAllRows.forEach(row => {
+        const rawValues = row[field.key] || [];
+        rawValues.forEach(raw => {
+          const canonical = resolveCanonical(raw, field.tagType);
+          counts.set(canonical, (counts.get(canonical) || 0) + 1);
+        });
+      });
+
+      if (counts.size === 0) return; // nothing to filter on for this field yet
+
+      const sortedTags = Array.from(counts.entries()).sort((a, b) => b[1] - a[1]);
+
+      const details = document.createElement("details");
+      details.className = "tbr-filter-group";
+      const summary = document.createElement("summary");
+      summary.textContent = `${field.label} (${counts.size})`;
+      details.appendChild(summary);
+
+      const chipsWrapper = document.createElement("div");
+      chipsWrapper.className = "tbr-filter-chips";
+
+      sortedTags.forEach(([canonical, count]) => {
+        const chip = document.createElement("span");
+        chip.className = "tbr-filter-chip";
+        if (tbrSelectedFilters[field.tagType].has(canonical)) chip.classList.add("selected");
+        chip.innerHTML = `${escapeHtml(canonical)} <span class="chip-count">${count}</span>`;
+        chip.addEventListener("click", () => {
+          if (tbrSelectedFilters[field.tagType].has(canonical)) {
+            tbrSelectedFilters[field.tagType].delete(canonical);
+          } else {
+            tbrSelectedFilters[field.tagType].add(canonical);
+          }
+          renderTbrFilterGroups();
+          renderTbrActiveFilterPills();
+          renderTbrResults();
+        });
+        chipsWrapper.appendChild(chip);
+      });
+
+      details.appendChild(chipsWrapper);
+      container.appendChild(details);
+    });
+  }
+
+  /**
+   * Renders the row of removable pills above the results showing
+   * every currently-active filter, plus the "clear all" link.
+   */
+  function renderTbrActiveFilterPills() {
+    const pillsContainer = document.getElementById("tbr-active-filters");
+    const clearBtn = document.getElementById("tbr-clear-filters-btn");
+    pillsContainer.innerHTML = "";
+
+    let anySelected = false;
+
+    TBR_FILTER_FIELDS.forEach(field => {
+      tbrSelectedFilters[field.tagType].forEach(canonical => {
+        anySelected = true;
+        const pill = document.createElement("span");
+        pill.className = "tbr-active-filter";
+        pill.innerHTML = `${escapeHtml(canonical)} <button aria-label="Remove filter">&times;</button>`;
+        pill.querySelector("button").addEventListener("click", () => {
+          tbrSelectedFilters[field.tagType].delete(canonical);
+          renderTbrFilterGroups();
+          renderTbrActiveFilterPills();
+          renderTbrResults();
+        });
+        pillsContainer.appendChild(pill);
+      });
+    });
+
+    clearBtn.classList.toggle("hidden", !anySelected);
+  }
+
+  document.getElementById("tbr-clear-filters-btn").addEventListener("click", () => {
+    TBR_FILTER_FIELDS.forEach(f => tbrSelectedFilters[f.tagType].clear());
+    renderTbrFilterGroups();
+    renderTbrActiveFilterPills();
+    renderTbrResults();
+  });
+
+  document.getElementById("tbr-sort-select").addEventListener("change", renderTbrResults);
+
+  /**
+   * Applies the current filters + sort to tbrAllRows and draws the
+   * result cards. A fic matches only if EVERY field that has active
+   * filters includes at least one selected canonical tag (AND across
+   * fields, OR within a field) - this mirrors how AO3's own filtering
+   * behaves.
+   */
+  function renderTbrResults() {
+    const listEl = document.getElementById("tbr-results-list");
+    const statusEl = document.getElementById("tbr-results-status");
+
+    if (!tbrLoaded) return;
+
+    let filtered = tbrAllRows.filter(row => {
+      return TBR_FILTER_FIELDS.every(field => {
+        const selected = tbrSelectedFilters[field.tagType];
+        if (selected.size === 0) return true; // no filter active on this field
+        const rawValues = row[field.key] || [];
+        const canonicalValues = rawValues.map(raw => resolveCanonical(raw, field.tagType));
+        return canonicalValues.some(c => selected.has(c));
+      });
+    });
+
+    const sortMode = document.getElementById("tbr-sort-select").value;
+    filtered.sort((a, b) => {
+      switch (sortMode) {
+        case "scraped_asc": return new Date(a.scraped_at) - new Date(b.scraped_at);
+        case "title_asc": return (a.title || "").localeCompare(b.title || "");
+        case "word_count_desc": return (b.word_count || 0) - (a.word_count || 0);
+        case "word_count_asc": return (a.word_count || 0) - (b.word_count || 0);
+        case "scraped_desc":
+        default: return new Date(b.scraped_at) - new Date(a.scraped_at);
+      }
+    });
+
+    if (tbrAllRows.length === 0) {
+      statusEl.textContent = "";
+      listEl.innerHTML = '<p class="empty-message">Nothing on your TBR list yet - mark a fic "To Be Read" from the extension or the Log tab.</p>';
+      return;
+    }
+
+    if (filtered.length === 0) {
+      statusEl.textContent = "";
+      listEl.innerHTML = '<p class="empty-message">No TBR fics match these filters.</p>';
+      return;
+    }
+
+    statusEl.textContent = "";
+    listEl.innerHTML = filtered.map(renderTbrCard).join("");
+
+    // Wire up quick-action buttons after inserting the HTML
+    filtered.forEach(row => {
+      const startBtn = document.getElementById(`tbr-start-${row.fic_id}`);
+      const finishBtn = document.getElementById(`tbr-finish-${row.fic_id}`);
+      if (startBtn) startBtn.addEventListener("click", () => moveTbrFicToStatus(row, "reading"));
+      if (finishBtn) finishBtn.addEventListener("click", () => moveTbrFicToStatus(row, "finished"));
+    });
+  }
+
+  function renderTbrCard(row) {
+    const ficUrl = `https://archiveofourown.org/works/${row.fic_id}`;
+    const safeTitle = escapeHtml(row.title || "(untitled)");
+    const metaParts = [];
+    if (row.word_count) metaParts.push(`${row.word_count.toLocaleString()} words`);
+    if (row.ratings && row.ratings.length > 0) metaParts.push(row.ratings.join(", "));
+
+    const fandomTags = (row.fandoms || []).slice(0, 3).map(f => `<span class="tbr-card-tag">${escapeHtml(f)}</span>`).join("");
+
+    return `
+      <div class="tbr-card">
+        <a class="tbr-card-title" href="${ficUrl}" target="_blank" rel="noopener">${safeTitle}</a>
+        ${metaParts.length > 0 ? `<div class="tbr-card-meta">${metaParts.join(" &middot; ")}</div>` : ""}
+        ${fandomTags ? `<div class="tbr-card-tags">${fandomTags}</div>` : ""}
+        <div class="tbr-card-actions">
+          <button id="tbr-start-${row.fic_id}">Start reading</button>
+          <button id="tbr-finish-${row.fic_id}">Mark finished</button>
+        </div>
+      </div>
+    `;
+  }
+
+  /**
+   * Quick action from a TBR card: moves the fic straight to
+   * "reading" or "finished" using the same saveFicStatus() path as
+   * everywhere else, so all the usual side effects (deactivating
+   * tbr_metadata, logging to Wrapped on finish, reusing scraped tags)
+   * happen automatically. No note carries over since TBR notes and
+   * tracked_fics notes are conceptually separate (a TBR note is
+   * "why I saved this", not a reading note) - open the extension
+   * popup or Log tab afterward if you want to add one.
+   */
+  async function moveTbrFicToStatus(row, newStatus) {
+    try {
+      await saveFicStatus({
+        ficId: row.fic_id,
+        title: row.title,
+        status: newStatus,
+        reason: null,
+        note: null,
+        chapterProgress: null,
+        isRereadFlag: false,
+        isBackdateFlag: false,
+        isFavorite: undefined
+      });
+      await loadTbrTab();
+    } catch (err) {
+      console.error(err);
+      const statusEl = document.getElementById("tbr-results-status");
+      statusEl.textContent = "Something went wrong moving this fic - try again.";
+      statusEl.className = "status-error";
+    }
+  }
+
+  // ---- Manual TBR entry popup ----
+  // Mirrors the manual-Wrapped-entry checkbox-group pattern exactly
+  // (mutually-exclusive "No Category" / warning declarations), just
+  // targeting tbr_metadata + tracked_fics instead of wrapped_log.
+
+  const tbrManualModal = document.getElementById("tbr-manual-modal");
+  document.getElementById("tbr-manual-add-open-btn").addEventListener("click", () => {
+    tbrManualModal.classList.remove("hidden");
+  });
+  document.getElementById("tbr-manual-modal-close").addEventListener("click", () => {
+    tbrManualModal.classList.add("hidden");
+  });
+
+  const tbrManualCategoryNone = document.getElementById("tbr-manual-category-none");
+  const tbrManualCategoryOptions = document.querySelectorAll(".tbr-manual-category-option");
+  tbrManualCategoryNone.addEventListener("change", () => {
+    if (tbrManualCategoryNone.checked) {
+      tbrManualCategoryOptions.forEach(cb => { cb.checked = false; cb.disabled = true; });
+    } else {
+      tbrManualCategoryOptions.forEach(cb => { cb.disabled = false; });
+    }
+  });
+  tbrManualCategoryOptions.forEach(cb => {
+    cb.addEventListener("change", () => { if (cb.checked) tbrManualCategoryNone.checked = false; });
+  });
+
+  const tbrManualWarningsNoneChosen = document.getElementById("tbr-manual-warnings-none-chosen");
+  const tbrManualWarningsNoneApply = document.getElementById("tbr-manual-warnings-none-apply");
+  const tbrManualWarningOptions = document.querySelectorAll(".tbr-manual-warning-option");
+
+  function clearTbrOtherWarningSpecials(exceptEl) {
+    [tbrManualWarningsNoneChosen, tbrManualWarningsNoneApply].forEach(cb => {
+      if (cb !== exceptEl) cb.checked = false;
+    });
+  }
+  tbrManualWarningsNoneChosen.addEventListener("change", () => {
+    if (tbrManualWarningsNoneChosen.checked) {
+      clearTbrOtherWarningSpecials(tbrManualWarningsNoneChosen);
+      tbrManualWarningOptions.forEach(cb => { cb.checked = false; cb.disabled = true; });
+    } else {
+      tbrManualWarningOptions.forEach(cb => { cb.disabled = false; });
+    }
+  });
+  tbrManualWarningsNoneApply.addEventListener("change", () => {
+    if (tbrManualWarningsNoneApply.checked) {
+      clearTbrOtherWarningSpecials(tbrManualWarningsNoneApply);
+      tbrManualWarningOptions.forEach(cb => { cb.checked = false; cb.disabled = true; });
+    } else {
+      tbrManualWarningOptions.forEach(cb => { cb.disabled = false; });
+    }
+  });
+  tbrManualWarningOptions.forEach(cb => {
+    cb.addEventListener("change", () => {
+      if (cb.checked) {
+        tbrManualWarningsNoneChosen.checked = false;
+        tbrManualWarningsNoneApply.checked = false;
+      }
+    });
+  });
+
+  function getTbrManualSelectedCategories() {
+    if (tbrManualCategoryNone.checked) return [];
+    return Array.from(tbrManualCategoryOptions).filter(cb => cb.checked).map(cb => cb.value);
+  }
+  function getTbrManualSelectedWarnings() {
+    if (tbrManualWarningsNoneChosen.checked) return ["Creator Chose Not To Use Archive Warnings"];
+    if (tbrManualWarningsNoneApply.checked) return ["No Archive Warnings Apply"];
+    return Array.from(tbrManualWarningOptions).filter(cb => cb.checked).map(cb => cb.value);
+  }
+
+  document.getElementById("tbr-manual-add-button").addEventListener("click", async () => {
+    const statusEl = document.getElementById("tbr-manual-add-status");
+    const url = document.getElementById("tbr-manual-url").value.trim();
+    const title = document.getElementById("tbr-manual-title").value.trim();
+    const ficId = getFicIdFromUrl(url);
+
+    if (!ficId) {
+      statusEl.textContent = "A valid AO3 link is required.";
+      statusEl.className = "status-error";
+      return;
+    }
+    if (!title) {
+      statusEl.textContent = "Title is required.";
+      statusEl.className = "status-error";
+      return;
+    }
+
+    const wordCountRaw = document.getElementById("tbr-manual-word-count").value.trim();
+    const ratingValue = document.getElementById("tbr-manual-ratings").value;
+    const note = document.getElementById("tbr-manual-note").value;
+
+    statusEl.textContent = "Saving...";
+    statusEl.className = "status-pending";
+
+    try {
+      // 1. Save into tbr_metadata directly (skip scraping - this IS
+      //    the manual-entry fallback for when scraping doesn't work).
+      const metaResponse = await fetch(`${SUPABASE_URL}/rest/v1/${TBR_METADATA_TABLE}?on_conflict=fic_id`, {
+        method: "POST",
+        headers: {
+          "apikey": SUPABASE_ANON_KEY,
+          "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+          "Content-Type": "application/json",
+          "Prefer": "resolution=merge-duplicates,return=representation"
+        },
+        body: JSON.stringify([{
+          fic_id: ficId,
+          title: title,
+          word_count: wordCountRaw ? parseInt(wordCountRaw, 10) : null,
+          authors: parseCommaList(document.getElementById("tbr-manual-authors").value),
+          ratings: ratingValue ? [ratingValue] : [],
+          archive_warnings: getTbrManualSelectedWarnings(),
+          category: getTbrManualSelectedCategories(),
+          fandoms: parseCommaList(document.getElementById("tbr-manual-fandoms").value),
+          relationships: parseCommaList(document.getElementById("tbr-manual-relationships").value),
+          characters: parseCommaList(document.getElementById("tbr-manual-characters").value),
+          free_form_tags: parseCommaList(document.getElementById("tbr-manual-tags").value),
+          is_active: true,
+          scraped_at: new Date().toISOString()
+        }])
+      });
+
+      if (!metaResponse.ok) {
+        statusEl.textContent = "Save failed - try again.";
+        statusEl.className = "status-error";
+        return;
+      }
+
+      // 2. Also upsert tracked_fics as "tbr" so it's highlighted on
+      //    AO3 listing pages, same as any other TBR fic.
+      await fetch(`${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}?on_conflict=fic_id`, {
+        method: "POST",
+        headers: {
+          "apikey": SUPABASE_ANON_KEY,
+          "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+          "Content-Type": "application/json",
+          "Prefer": "resolution=merge-duplicates,return=representation"
+        },
+        body: JSON.stringify([{
+          fic_id: ficId,
+          title: title,
+          status: "tbr",
+          note: note || null,
+          updated_at: new Date().toISOString()
+        }])
+      });
+
+      statusEl.textContent = `Added "${title}" to your TBR list!`;
+      statusEl.className = "status-success";
+
+      ["tbr-manual-url","tbr-manual-title","tbr-manual-word-count","tbr-manual-authors","tbr-manual-fandoms",
+       "tbr-manual-relationships","tbr-manual-characters","tbr-manual-tags","tbr-manual-note"
+      ].forEach(id => { document.getElementById(id).value = ""; });
+      document.getElementById("tbr-manual-ratings").value = "";
+      tbrManualCategoryOptions.forEach(cb => { cb.checked = false; cb.disabled = false; });
+      tbrManualCategoryNone.checked = false;
+      tbrManualWarningOptions.forEach(cb => { cb.checked = false; cb.disabled = false; });
+      tbrManualWarningsNoneChosen.checked = false;
+      tbrManualWarningsNoneApply.checked = false;
+
+      await loadTbrTab();
+      setTimeout(() => { tbrManualModal.classList.add("hidden"); }, 1200);
+    } catch (err) {
+      console.error(err);
+      statusEl.textContent = "Something went wrong - check your connection.";
+      statusEl.className = "status-error";
+    }
+  });
+
+  // ---- Tag wrangling popup ----
+  // Lets you pick a tag type, check off raw tags that are duplicates
+  // of each other, and give them one canonical name. Reading the
+  // popup: the checkbox list always shows RAW tags (exactly as
+  // scraped) so you can tell apart near-duplicates; a badge next to
+  // an already-wrangled tag shows what it currently maps to.
+
+  const wrangleModal = document.getElementById("wrangle-modal");
+  let wrangleActiveTagType = "fandom";
+
+  document.getElementById("tbr-wrangle-open-btn").addEventListener("click", () => {
+    wrangleModal.classList.remove("hidden");
+    renderWrangleRawTagList();
+    renderWrangleExistingList();
+  });
+  document.getElementById("wrangle-modal-close").addEventListener("click", () => {
+    wrangleModal.classList.add("hidden");
+  });
+
+  document.querySelectorAll(".wrangle-type-tab").forEach(tab => {
+    tab.addEventListener("click", () => {
+      wrangleActiveTagType = tab.dataset.tagType;
+      document.querySelectorAll(".wrangle-type-tab").forEach(t => t.classList.toggle("active", t === tab));
+      renderWrangleRawTagList();
+      renderWrangleExistingList();
+    });
+  });
+
+  const TBR_FIELD_BY_TAG_TYPE = {
+    fandom: "fandoms", rating: "ratings", warning: "archive_warnings",
+    relationship: "relationships", character: "characters", freeform: "free_form_tags",
+    category: "category"
+  };
+
+  /**
+   * Lists every distinct RAW tag of the active type across the whole
+   * TBR list (not just the currently-filtered subset - wrangling
+   * should see everything so you can clean things up before you've
+   * even filtered).
+   */
+  function renderWrangleRawTagList() {
+    const listEl = document.getElementById("wrangle-raw-tag-list");
+    const field = TBR_FIELD_BY_TAG_TYPE[wrangleActiveTagType];
+    const rawTagSet = new Set();
+    tbrAllRows.forEach(row => (row[field] || []).forEach(t => rawTagSet.add(t)));
+
+    const sortedRaw = Array.from(rawTagSet).sort((a, b) => a.localeCompare(b));
+
+    if (sortedRaw.length === 0) {
+      listEl.innerHTML = '<p class="empty-message" style="padding: 12px;">No tags of this type in your TBR list yet.</p>';
+      return;
+    }
+
+    listEl.innerHTML = sortedRaw.map(raw => {
+      const canonical = resolveCanonical(raw, wrangleActiveTagType);
+      const badge = canonical !== raw
+        ? `<span class="wrangle-raw-tag-canonical">${escapeHtml(canonical)}</span>`
+        : "";
+      return `
+        <label class="wrangle-raw-tag-row">
+          <input type="checkbox" class="wrangle-raw-checkbox" value="${escapeHtml(raw)}" />
+          <span class="wrangle-raw-tag-name">${escapeHtml(raw)}</span>
+          ${badge}
+        </label>
+      `;
+    }).join("");
+  }
+
+  /**
+   * Lists existing canonical groups for the active tag type, each
+   * with the raw tags folded into it and an Undo button.
+   */
+  function renderWrangleExistingList() {
+    const listEl = document.getElementById("wrangle-existing-list");
+    const groups = {}; // canonical -> [rawTag, ...]
+
+    Object.entries(tbrAliasMap).forEach(([key, canonical]) => {
+      const [type, raw] = key.split("::");
+      if (type !== wrangleActiveTagType) return;
+      if (!groups[canonical]) groups[canonical] = [];
+      groups[canonical].push(raw);
+    });
+
+    const entries = Object.entries(groups);
+    if (entries.length === 0) {
+      listEl.innerHTML = "";
+      return;
+    }
+
+    listEl.innerHTML = `<p class="tab-description" style="margin-bottom: 4px;">Existing groups:</p>` +
+      entries.map(([canonical, rawTags]) => `
+        <div class="wrangle-existing-row">
+          <span class="canonical-name">${escapeHtml(canonical)}</span>
+          <span class="raw-names">${rawTags.map(escapeHtml).join(", ")}</span>
+          <button data-canonical="${escapeHtml(canonical)}">Undo</button>
+        </div>
+      `).join("");
+
+    listEl.querySelectorAll("button[data-canonical]").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const canonical = btn.dataset.canonical;
+        const rawTagsToUndo = groups[canonical];
+        for (const raw of rawTagsToUndo) {
+          await fetch(
+            `${SUPABASE_URL}/rest/v1/${TAG_ALIASES_TABLE}?raw_tag=eq.${encodeURIComponent(raw)}&tag_type=eq.${wrangleActiveTagType}`,
+            { method: "DELETE", headers: { "apikey": SUPABASE_ANON_KEY, "Authorization": `Bearer ${SUPABASE_ANON_KEY}` } }
+          );
+        }
+        tbrAliasMap = await getTagAliasMap();
+        renderWrangleRawTagList();
+        renderWrangleExistingList();
+        renderTbrFilterGroups();
+        renderTbrActiveFilterPills();
+        renderTbrResults();
+      });
+    });
+  }
+
+  document.getElementById("wrangle-save-btn").addEventListener("click", async () => {
+    const statusEl = document.getElementById("wrangle-status");
+    const canonicalName = document.getElementById("wrangle-canonical-input").value.trim();
+    const checkedBoxes = Array.from(document.querySelectorAll(".wrangle-raw-checkbox:checked"));
+
+    if (!canonicalName) {
+      statusEl.textContent = "Enter a group name first.";
+      statusEl.className = "status-error";
+      return;
+    }
+    if (checkedBoxes.length === 0) {
+      statusEl.textContent = "Check off at least one tag to group.";
+      statusEl.className = "status-error";
+      return;
+    }
+
+    statusEl.textContent = "Saving...";
+    statusEl.className = "status-pending";
+
+    try {
+      for (const box of checkedBoxes) {
+        await fetch(`${SUPABASE_URL}/rest/v1/${TAG_ALIASES_TABLE}?on_conflict=raw_tag,tag_type`, {
+          method: "POST",
+          headers: {
+            "apikey": SUPABASE_ANON_KEY,
+            "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+            "Content-Type": "application/json",
+            "Prefer": "resolution=merge-duplicates,return=representation"
+          },
+          body: JSON.stringify([{ raw_tag: box.value, tag_type: wrangleActiveTagType, canonical_tag: canonicalName }])
+        });
+      }
+
+      statusEl.textContent = `Grouped ${checkedBoxes.length} tag(s) under "${canonicalName}".`;
+      statusEl.className = "status-success";
+      document.getElementById("wrangle-canonical-input").value = "";
+
+      tbrAliasMap = await getTagAliasMap();
+      renderWrangleRawTagList();
+      renderWrangleExistingList();
+      renderTbrFilterGroups();
+      renderTbrActiveFilterPills();
+      renderTbrResults();
+    } catch (err) {
+      console.error(err);
+      statusEl.textContent = "Something went wrong - try again.";
+      statusEl.className = "status-error";
+    }
+  });
+
+  const wrappedBackdateCheckbox = document.getElementById("wrapped-is-backdate-checkbox");
+  const wrappedBackdateOptionsWrapper = document.getElementById("wrapped-backdate-options-wrapper");
+
+  wrappedBackdateCheckbox.addEventListener("change", () => {
+    wrappedBackdateOptionsWrapper.classList.toggle("hidden", !wrappedBackdateCheckbox.checked);
+  });
+
+  // ---- Category checkbox group: "No Category" is mutually exclusive
+  // with every actual category option. Checking it unchecks and
+  // disables the others (so the stored list is genuinely empty, per
+  // your "leave that cell blank" instruction); checking any real
+  // category option unchecks "No Category".
+  const manualCategoryNone = document.getElementById("manual-category-none");
+  const manualCategoryOptions = document.querySelectorAll(".manual-category-option");
+
+  manualCategoryNone.addEventListener("change", () => {
+    if (manualCategoryNone.checked) {
+      manualCategoryOptions.forEach(cb => { cb.checked = false; cb.disabled = true; });
+    } else {
+      manualCategoryOptions.forEach(cb => { cb.disabled = false; });
+    }
+  });
+
+  manualCategoryOptions.forEach(cb => {
+    cb.addEventListener("change", () => {
+      if (cb.checked) manualCategoryNone.checked = false;
+    });
+  });
+
+  // ---- Archive Warnings group: "Creator Chose Not To Use..." and
+  // "No Archive Warnings Apply" are mutually exclusive with each
+  // other AND with every actual warning option, mirroring how AO3
+  // itself treats these as special, distinct declarations rather
+  // than just "no warnings selected".
+  const manualWarningsNoneChosen = document.getElementById("manual-warnings-none-chosen");
+  const manualWarningsNoneApply = document.getElementById("manual-warnings-none-apply");
+  const manualWarningOptions = document.querySelectorAll(".manual-warning-option");
+
+  function clearOtherWarningSpecials(exceptEl) {
+    [manualWarningsNoneChosen, manualWarningsNoneApply].forEach(cb => {
+      if (cb !== exceptEl) cb.checked = false;
+    });
+  }
+
+  manualWarningsNoneChosen.addEventListener("change", () => {
+    if (manualWarningsNoneChosen.checked) {
+      clearOtherWarningSpecials(manualWarningsNoneChosen);
+      manualWarningOptions.forEach(cb => { cb.checked = false; cb.disabled = true; });
+    } else {
+      manualWarningOptions.forEach(cb => { cb.disabled = false; });
+    }
+  });
+
+  manualWarningsNoneApply.addEventListener("change", () => {
+    if (manualWarningsNoneApply.checked) {
+      clearOtherWarningSpecials(manualWarningsNoneApply);
+      manualWarningOptions.forEach(cb => { cb.checked = false; cb.disabled = true; });
+    } else {
+      manualWarningOptions.forEach(cb => { cb.disabled = false; });
+    }
+  });
+
+  manualWarningOptions.forEach(cb => {
+    cb.addEventListener("change", () => {
+      if (cb.checked) {
+        manualWarningsNoneChosen.checked = false;
+        manualWarningsNoneApply.checked = false;
+      }
+    });
+  });
+
+  /**
+   * Reads the current state of the category checkbox group.
+   * Returns [] if "No Category" is checked, otherwise the checked values.
+   */
+  function getSelectedCategories() {
+    if (manualCategoryNone.checked) return [];
+    return Array.from(manualCategoryOptions).filter(cb => cb.checked).map(cb => cb.value);
+  }
+
+  /**
+   * Reads the current state of the archive warnings checkbox group.
+   * Returns a single-item array for either special declaration, or
+   * the list of checked specific warnings otherwise.
+   */
+  function getSelectedWarnings() {
+    if (manualWarningsNoneChosen.checked) return ["Creator Chose Not To Use Archive Warnings"];
+    if (manualWarningsNoneApply.checked) return ["No Archive Warnings Apply"];
+    return Array.from(manualWarningOptions).filter(cb => cb.checked).map(cb => cb.value);
+  }
+
+  function resetManualCategoryAndWarnings() {
+    manualCategoryOptions.forEach(cb => { cb.checked = false; cb.disabled = false; });
+    manualCategoryNone.checked = false;
+    manualWarningOptions.forEach(cb => { cb.checked = false; cb.disabled = false; });
+    manualWarningsNoneChosen.checked = false;
+    manualWarningsNoneApply.checked = false;
+  }
+
+  document.getElementById("wrapped-scrape-button").addEventListener("click", async () => {
+    const statusEl = document.getElementById("wrapped-scrape-status");
+    const fallbackEl = document.getElementById("wrapped-manual-fallback");
+    const url = document.getElementById("wrapped-url-input").value.trim();
+    const isBackdated = wrappedBackdateCheckbox.checked;
+
+    fallbackEl.classList.add("hidden");
+    statusEl.textContent = "";
+
+    const ficId = getFicIdFromUrl(url);
+    if (!ficId) {
+      statusEl.textContent = "That doesn't look like a valid AO3 work link.";
+      statusEl.className = "status-error";
+      return;
+    }
+
+    statusEl.textContent = "Scraping...";
+    statusEl.className = "status-pending";
+
+    try {
+      const scrapeResponse = await fetch(SCRAPE_FIC_FUNCTION_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${SUPABASE_ANON_KEY}` },
+        body: JSON.stringify({ url })
+      });
+      const scrapeResult = await scrapeResponse.json();
+
+      if (!scrapeResponse.ok) {
+        statusEl.textContent = `Couldn't scrape this fic (${scrapeResult.error || "unknown error"}). Add it manually below.`;
+        statusEl.className = "status-error";
+        fallbackEl.classList.remove("hidden");
+        document.getElementById("manual-url").value = url;
+        if (scrapeResult.partial && scrapeResult.partial.title) {
+          document.getElementById("manual-title").value = scrapeResult.partial.title;
+        }
+        return;
+      }
+
+      const isReread = await ficHasPriorWrappedEntry(ficId);
+
+      const wrappedResponse = await fetch(`${SUPABASE_URL}/rest/v1/${WRAPPED_TABLE}`, {
+        method: "POST",
+        headers: {
+          "apikey": SUPABASE_ANON_KEY,
+          "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+          "Content-Type": "application/json",
+          "Prefer": "return=representation"
+        },
+        body: JSON.stringify([{
+          fic_id: ficId,
+          title: scrapeResult.title,
+          word_count: scrapeResult.word_count,
+          authors: scrapeResult.authors,
+          ratings: scrapeResult.ratings,
+          archive_warnings: scrapeResult.archive_warnings,
+          category: scrapeResult.category,
+          fandoms: scrapeResult.fandoms,
+          relationships: scrapeResult.relationships,
+          characters: scrapeResult.characters,
+          free_form_tags: scrapeResult.free_form_tags,
+          is_reread: isReread,
+          is_backdated: isBackdated,
+          completed_at: isBackdated ? null : new Date().toISOString()
+        }])
+      });
+
+      if (!wrappedResponse.ok) {
+        statusEl.textContent = "Scraped okay, but saving failed. Try again or add manually below.";
+        statusEl.className = "status-error";
+        fallbackEl.classList.remove("hidden");
+        document.getElementById("manual-url").value = url;
+        document.getElementById("manual-title").value = scrapeResult.title || "";
+        return;
+      }
+
+      statusEl.textContent = `Added "${scrapeResult.title}" to Wrapped!`;
+      statusEl.className = "status-success";
+      document.getElementById("wrapped-url-input").value = "";
+      wrappedBackdateCheckbox.checked = false;
+      wrappedBackdateOptionsWrapper.classList.add("hidden");
+    } catch (err) {
+      console.error(err);
+      statusEl.textContent = "Something went wrong. Add it manually below.";
+      statusEl.className = "status-error";
+      fallbackEl.classList.remove("hidden");
+      document.getElementById("manual-url").value = url;
+    }
+  });
+
+  document.getElementById("manual-add-button").addEventListener("click", async () => {
+    const statusEl = document.getElementById("manual-add-status");
+    const url = document.getElementById("manual-url").value.trim();
+    const title = document.getElementById("manual-title").value.trim();
+    const isBackdated = wrappedBackdateCheckbox.checked;
+
+    const ficId = getFicIdFromUrl(url);
+
+    if (!ficId) {
+      statusEl.textContent = "A valid AO3 link is required (so this fic can be matched up with rereads later).";
+      statusEl.className = "status-error";
+      return;
+    }
+
+    if (!title) {
+      statusEl.textContent = "Title is required.";
+      statusEl.className = "status-error";
+      return;
+    }
+
+    const wordCountRaw = document.getElementById("manual-word-count").value.trim();
+    const isReread = await ficHasPriorWrappedEntry(ficId);
+    const ratingValue = document.getElementById("manual-ratings").value;
+
+    try {
+      const response = await fetch(`${SUPABASE_URL}/rest/v1/${WRAPPED_TABLE}`, {
+        method: "POST",
+        headers: {
+          "apikey": SUPABASE_ANON_KEY,
+          "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+          "Content-Type": "application/json",
+          "Prefer": "return=representation"
+        },
+        body: JSON.stringify([{
+          fic_id: ficId,
+          title: title,
+          word_count: wordCountRaw ? parseInt(wordCountRaw, 10) : null,
+          authors: parseCommaList(document.getElementById("manual-authors").value),
+          ratings: ratingValue ? [ratingValue] : [],
+          archive_warnings: getSelectedWarnings(),
+          category: getSelectedCategories(),
+          fandoms: parseCommaList(document.getElementById("manual-fandoms").value),
+          relationships: parseCommaList(document.getElementById("manual-relationships").value),
+          characters: parseCommaList(document.getElementById("manual-characters").value),
+          free_form_tags: parseCommaList(document.getElementById("manual-tags").value),
+          is_reread: isReread,
+          is_backdated: isBackdated,
+          completed_at: isBackdated ? null : new Date().toISOString()
+        }])
+      });
+
+      if (!response.ok) {
+        statusEl.textContent = "Save failed - try again.";
+        statusEl.className = "status-error";
+        return;
+      }
+
+      statusEl.textContent = `Added "${title}" to Wrapped manually!`;
+      statusEl.className = "status-success";
+
+      ["manual-url","manual-title","manual-word-count","manual-authors","manual-fandoms","manual-relationships",
+       "manual-characters","manual-tags"
+      ].forEach(id => { document.getElementById(id).value = ""; });
+      document.getElementById("manual-ratings").value = "";
+      resetManualCategoryAndWarnings();
+      document.getElementById("wrapped-url-input").value = "";
+      wrappedBackdateCheckbox.checked = false;
+      wrappedBackdateOptionsWrapper.classList.add("hidden");
+      document.getElementById("wrapped-manual-fallback").classList.add("hidden");
+    } catch (err) {
+      console.error(err);
+      statusEl.textContent = "Something went wrong - check your connection.";
+      statusEl.className = "status-error";
+    }
+  });
+
+  let wrappedYearInitialized = false;
+
+  async function initWrappedYearDropdown() {
+    if (wrappedYearInitialized) return;
+    wrappedYearInitialized = true;
+
+    const yearSelect = document.getElementById("wrapped-year-select");
+    const currentYear = new Date().getFullYear();
+
+    let earliestYear = currentYear;
+    try {
+      const response = await fetch(
+        `${SUPABASE_URL}/rest/v1/${WRAPPED_TABLE}?select=completed_at&completed_at=not.is.null&order=completed_at.asc&limit=1`,
+        { headers: { "apikey": SUPABASE_ANON_KEY, "Authorization": `Bearer ${SUPABASE_ANON_KEY}` } }
+      );
+      if (response.ok) {
+        const rows = await response.json();
+        if (rows.length > 0) {
+          earliestYear = new Date(rows[0].completed_at).getFullYear();
+        }
+      }
+    } catch (err) {
+      console.error("Couldn't determine earliest Wrapped year:", err);
+    }
+
+    yearSelect.innerHTML = "";
+
+    for (let y = currentYear; y >= earliestYear; y--) {
+      const option = document.createElement("option");
+      option.value = y;
+      option.textContent = y;
+      yearSelect.appendChild(option);
+    }
+
+    const allTimeOption = document.createElement("option");
+    allTimeOption.value = "all";
+    allTimeOption.textContent = "All Time";
+    yearSelect.appendChild(allTimeOption);
+
+    yearSelect.addEventListener("change", () => loadWrappedStats());
+  }
+
+  async function loadWrappedStats() {
+    const statusEl = document.getElementById("wrapped-stats-status");
+    const contentEl = document.getElementById("wrapped-stats-content");
+
+    await initWrappedYearDropdown();
+
+    const yearSelect = document.getElementById("wrapped-year-select");
+    const selectedValue = yearSelect.value || String(new Date().getFullYear());
+    const isAllTime = selectedValue === "all";
+
+    statusEl.textContent = "Loading...";
+    statusEl.className = "status-pending";
+    contentEl.innerHTML = "";
+
+    try {
+      let queryUrl;
+      if (isAllTime) {
+        queryUrl = `${SUPABASE_URL}/rest/v1/${WRAPPED_TABLE}?select=*`;
+      } else {
+        const selectedYear = parseInt(selectedValue, 10);
+        const yearStart = `${selectedYear}-01-01T00:00:00Z`;
+        const yearEnd = `${selectedYear + 1}-01-01T00:00:00Z`;
+        queryUrl = `${SUPABASE_URL}/rest/v1/${WRAPPED_TABLE}?completed_at=gte.${yearStart}&completed_at=lt.${yearEnd}&select=*`;
+      }
+
+      const response = await fetch(queryUrl, {
+        headers: { "apikey": SUPABASE_ANON_KEY, "Authorization": `Bearer ${SUPABASE_ANON_KEY}` }
+      });
+
+      if (!response.ok) {
+        statusEl.textContent = "Couldn't load your Wrapped stats - try again.";
+        statusEl.className = "status-error";
+        return;
+      }
+
+      const rows = await response.json();
+      statusEl.textContent = "";
+
+      if (!rows || rows.length === 0) {
+        contentEl.innerHTML = `<p class="empty-message">No completed fics logged ${isAllTime ? "yet" : `for ${selectedValue}`}.</p>`;
+        return;
+      }
+
+      contentEl.innerHTML = renderWrappedStats(rows, isAllTime ? "All Time" : parseInt(selectedValue, 10), isAllTime);
+    } catch (err) {
+      console.error(err);
+      statusEl.textContent = "Something went wrong - check your connection.";
+      statusEl.className = "status-error";
+    }
+  }
+
+  function countAcrossArrays(rows, fieldName) {
+    const counts = {};
+    for (const row of rows) {
+      const values = row[fieldName] || [];
+      for (const value of values) {
+        counts[value] = (counts[value] || 0) + 1;
+      }
+    }
+    return Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  }
+
+  function renderWrappedStats(rows, yearLabel, isAllTime) {
+    const totalWordCount = rows.reduce((sum, r) => sum + (r.word_count || 0), 0);
+    const totalCompletions = rows.length;
+    const uniqueFicIds = new Set(rows.map(r => r.fic_id));
+    const totalUniqueFics = uniqueFicIds.size;
+    const backdatedCount = rows.filter(r => r.is_backdated).length;
+
+    let avgWordsPerDay, avgLabel;
+    if (isAllTime) {
+      const daysAlive = Math.max(1, Math.floor((new Date() - BIRTHDAY) / 86400000));
+      avgWordsPerDay = Math.round(totalWordCount / daysAlive);
+      avgLabel = "Avg Words / Day of My Life";
+    } else {
+      const daysSoFarThisYear = yearLabel === new Date().getFullYear()
+        ? Math.max(1, Math.ceil((new Date() - new Date(`${yearLabel}-01-01`)) / 86400000))
+        : 365;
+      avgWordsPerDay = Math.round(totalWordCount / daysSoFarThisYear);
+      avgLabel = "Avg Words / Day";
+    }
+
+    const longestFic = rows.reduce((max, r) => (r.word_count || 0) > (max.word_count || 0) ? r : max, rows[0]);
+
+    const ficIdCounts = {};
+    for (const row of rows) {
+      ficIdCounts[row.fic_id] = (ficIdCounts[row.fic_id] || 0) + 1;
+    }
+    const mostRereadFicId = Object.entries(ficIdCounts).sort((a, b) => b[1] - a[1])[0];
+    const mostRereadFic = mostRereadFicId ? rows.find(r => r.fic_id === mostRereadFicId[0]) : null;
+    const mostRereadCount = mostRereadFicId ? mostRereadFicId[1] : 0;
+
+    const topAuthors = countAcrossArrays(rows, "authors").slice(0, 5);
+    const topFandoms = countAcrossArrays(rows, "fandoms").slice(0, 5);
+    const topRelationships = countAcrossArrays(rows, "relationships").slice(0, 5);
+    const topTags = countAcrossArrays(rows, "free_form_tags").slice(0, 10);
+
+    const renderList = (items) => items.length
+      ? `<ul class="wrapped-list">${items.map(([name, count], i) =>
+          `<li><span><span class="rank">${i + 1}.</span>${escapeHtml(name)}</span><span class="count">${count}x</span></li>`
+        ).join("")}</ul>`
+      : `<p class="empty-message">Not enough data yet.</p>`;
+
+    return `
+      <div class="wrapped-hero">
+        <div class="wrapped-hero-number">${totalWordCount.toLocaleString()}</div>
+        <div class="wrapped-hero-label">Words Read ${isAllTime ? "(All Time)" : `in ${yearLabel}`}</div>
+        ${backdatedCount > 0 ? `<div class="wrapped-backdated-note">Includes ${backdatedCount} backdated ${backdatedCount === 1 ? "entry" : "entries"}</div>` : ""}
+      </div>
+
+      <div class="wrapped-stat-grid">
+        <div class="wrapped-stat-box">
+          <div class="num">${totalUniqueFics}</div>
+          <div class="label">Unique Fics</div>
+        </div>
+        <div class="wrapped-stat-box">
+          <div class="num">${totalCompletions}</div>
+          <div class="label">Total Completions</div>
+        </div>
+        <div class="wrapped-stat-box">
+          <div class="num">${avgWordsPerDay.toLocaleString()}</div>
+          <div class="label">${avgLabel}</div>
+        </div>
+        <div class="wrapped-stat-box">
+          <div class="num">${mostRereadCount}x</div>
+          <div class="label">Most Reread</div>
+        </div>
+      </div>
+
+      <div class="wrapped-section-title">Longest Fic</div>
+      <div class="wrapped-spotlight">
+        <div class="wrapped-spotlight-title">${escapeHtml(longestFic.title || "Untitled")}</div>
+        <div class="wrapped-spotlight-meta">${(longestFic.word_count || 0).toLocaleString()} words &middot; ${escapeHtml((longestFic.authors || [])[0] || "Unknown author")}</div>
+      </div>
+
+      ${mostRereadFic ? `
+      <div class="wrapped-section-title">Most Reread</div>
+      <div class="wrapped-spotlight">
+        <div class="wrapped-spotlight-title">${escapeHtml(mostRereadFic.title || "Untitled")}</div>
+        <div class="wrapped-spotlight-meta">Read ${mostRereadCount} time${mostRereadCount === 1 ? "" : "s"} ${isAllTime ? "total" : `in ${yearLabel}`}</div>
+      </div>
+      ` : ""}
+
+      <div class="wrapped-section-title">Top 5 Authors</div>
+      ${renderList(topAuthors)}
+
+      <div class="wrapped-section-title">Top 5 Fandoms</div>
+      ${renderList(topFandoms)}
+
+      <div class="wrapped-section-title">Top 5 Relationships</div>
+      ${renderList(topRelationships)}
+
+      <div class="wrapped-section-title">Top 10 Tags</div>
+      ${renderList(topTags)}
+    `;
+  }
+</script>
+
+</body>
+</html>
